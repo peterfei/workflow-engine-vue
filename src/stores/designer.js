@@ -141,6 +141,22 @@ export const useDesignerStore = defineStore('designer', {
       })
     },
     
+    // 更新连接属性
+    updateConnection(connectionId, updates) {
+      const connection = this.getConnectionById(connectionId)
+      if (!connection) return
+      
+      const oldData = { ...connection }
+      Object.assign(connection, updates)
+      
+      this.pushHistory({
+        type: 'UPDATE_CONNECTION',
+        connectionId,
+        oldData,
+        newData: { ...updates }
+      })
+    },
+    
     // 选择节点
     selectNode(nodeId, multi = false) {
       if (multi) {
@@ -277,6 +293,14 @@ export const useDesignerStore = defineStore('designer', {
           this.connections.push({ ...action.connection })
           break
           
+        case 'UPDATE_CONNECTION': {
+          const connection = this.getConnectionById(action.connectionId)
+          if (connection) {
+            Object.assign(connection, action.oldData)
+          }
+          break
+        }
+          
         case 'ADD_NODES':
           action.nodes.forEach(node => {
             this.nodes = this.nodes.filter(n => n.id !== node.id)
@@ -315,6 +339,14 @@ export const useDesignerStore = defineStore('designer', {
         case 'DELETE_CONNECTION':
           this.connections = this.connections.filter(c => c.id !== action.connection.id)
           break
+          
+        case 'UPDATE_CONNECTION': {
+          const connection = this.getConnectionById(action.connectionId)
+          if (connection) {
+            Object.assign(connection, action.newData)
+          }
+          break
+        }
           
         case 'ADD_NODES':
           action.nodes.forEach(node => {

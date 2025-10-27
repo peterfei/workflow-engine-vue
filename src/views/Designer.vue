@@ -8,14 +8,14 @@
           <p class="page-subtitle">创建和编辑业务流程图</p>
         </div>
         <div class="flex items-center gap-3">
-          <button class="btn btn-secondary" @click="$router.go(-1)">
-            <i class="fas fa-arrow-left"></i>
-            返回
-          </button>
-          <button class="btn btn-secondary" @click="toggleConnectionMode">
-            <i class="fas fa-link"></i>
+        <button class="btn btn-secondary" @click="$router.go(-1)">
+        <i class="fas fa-arrow-left"></i>
+        返回
+        </button>
+        <button class="btn btn-secondary" @click="toggleConnectionMode">
+        <i class="fas fa-link"></i>
             {{ store.isConnecting ? '退出连接模式' : '连接模式' }}
-          </button>
+        </button>
           <button class="btn btn-secondary" @click="toggleSnapToGrid">
             <i class="fas" :class="store.snapToGrid ? 'fa-magnet' : 'fa-border-none'"></i>
             {{ store.snapToGrid ? '网格吸附：开' : '网格吸附：关' }}
@@ -24,21 +24,50 @@
             <i class="fas" :class="store.showGrid ? 'fa-th' : 'fa-th-large'"></i>
             {{ store.showGrid ? '显示网格' : '隐藏网格' }}
           </button>
-          <button class="btn btn-secondary">
-            <i class="fas fa-save"></i>
-            保存草稿
+          <div class="relative inline-block">
+            <button class="btn btn-secondary" @click.stop="toggleExportMenu">
+              <i class="fas fa-download"></i>
+              导出
+              <i class="fas fa-chevron-down ml-1 text-xs"></i>
+            </button>
+            <div v-if="showExportMenu" class="dropdown-menu">
+              <div class="dropdown-item" @click="exportAsSVG">
+                <i class="fas fa-file-code mr-2"></i>
+                导出为SVG
+              </div>
+              <div class="dropdown-item" @click="exportAsJSON">
+                <i class="fas fa-file-export mr-2"></i>
+                导出为JSON
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" @click="importJSON">
+                <i class="fas fa-file-import mr-2"></i>
+                从JSON导入
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-secondary" @click="validateFlow" :class="{ 'btn-warning': validationResult && !validationResult.valid }">
+            <i class="fas fa-check-circle"></i>
+            验证流程
+            <span v-if="validationResult" class="ml-1 text-xs">
+              ({{ validationResult.errors.length + validationResult.warnings.length }})
+            </span>
           </button>
+          <button class="btn btn-secondary" @click="saveToLocal">
+        <i class="fas fa-save"></i>
+        保存草稿
+        </button>
           <button class="btn btn-primary">
-            <i class="fas fa-play"></i>
-            发布流程
-          </button>
-        </div>
+             <i class="fas fa-play"></i>
+             发布流程
+           </button>
+         </div>
       </div>
     </header>
 
     <!-- 主要内容 -->
     <main class="p-6">
-      <div class="card p-6">
+      <div class="card p-4">
         <!-- 右键菜单 -->
         <div v-if="contextMenu.visible" 
              class="context-menu" 
@@ -111,44 +140,106 @@
           </div>
         </div>
 
-        <div class="flex items-center justify-between mb-6">
+        <!-- 验证结果对话框 -->
+        <div v-if="showValidationDialog" class="modal-overlay" @click="showValidationDialog = false">
+          <div class="modal-dialog modal-large" @click.stop>
+            <div class="modal-header">
+              <i class="fas mr-2" :class="validationResult?.valid ? 'fa-check-circle text-green-500' : 'fa-exclamation-circle text-yellow-500'"></i>
+              流程验证结果
+            </div>
+            <div class="modal-body" v-if="validationResult">
+              <!-- 摘要 -->
+              <div class="validation-summary">
+                <div class="summary-item">
+                  <span class="label">总节点数:</span>
+                  <span class="value">{{ validationResult.summary.totalNodes }}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="label">总连接数:</span>
+                  <span class="value">{{ validationResult.summary.totalConnections }}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="label">错误:</span>
+                  <span class="value text-red-600">{{ validationResult.summary.errorCount }}</span>
+                </div>
+                <div class="summary-item">
+                  <span class="label">警告:</span>
+                  <span class="value text-yellow-600">{{ validationResult.summary.warningCount }}</span>
+                </div>
+              </div>
+
+              <!-- 成功消息 -->
+              <div v-if="validationResult.valid && validationResult.warnings.length === 0" class="success-message">
+                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                流程验证通过，没有发现问题！
+              </div>
+
+              <!-- 错误列表 -->
+              <div v-if="validationResult.errors.length > 0" class="issue-section">
+                <h4 class="issue-title error">
+                  <i class="fas fa-times-circle mr-2"></i>
+                  错误 ({{ validationResult.errors.length }})
+                </h4>
+                <div v-for="(error, idx) in validationResult.errors" :key="`error-${idx}`" class="issue-item error">
+                  <div class="issue-message">{{ error.message }}</div>
+                  <div v-if="error.nodes" class="issue-details">
+                    影响节点: {{ error.nodes.join(', ') }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- 警告列表 -->
+              <div v-if="validationResult.warnings.length > 0" class="issue-section">
+                <h4 class="issue-title warning">
+                  <i class="fas fa-exclamation-triangle mr-2"></i>
+                  警告 ({{ validationResult.warnings.length }})
+                </h4>
+                <div v-for="(warning, idx) in validationResult.warnings" :key="`warning-${idx}`" class="issue-item warning">
+                  <div class="issue-message">{{ warning.message }}</div>
+                  <div v-if="warning.nodes" class="issue-details">
+                    影响节点: {{ warning.nodes.join(', ') }}
+                  </div>
+                  <div v-if="warning.cycles" class="issue-details">
+                    循环路径:
+                    <div v-for="(cycle, cIdx) in warning.cycles" :key="`cycle-${cIdx}`" class="ml-4">
+                      {{ cIdx + 1 }}. {{ cycle.join(' → ') }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-primary" @click="showValidationDialog = false">关闭</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between mb-3">
           <h3 class="text-lg font-semibold text-gray-800">
             <i class="fas fa-project-diagram text-blue-500 mr-2"></i>
             流程画布
           </h3>
           <div class="flex gap-2">
             <button class="btn btn-sm btn-secondary" @click="undo" :disabled="!store.canUndo">
-              <i class="fas fa-undo"></i>
-            </button>
+          <i class="fas fa-undo"></i>
+          </button>
             <button class="btn btn-sm btn-secondary" @click="redo" :disabled="!store.canRedo">
-              <i class="fas fa-redo"></i>
-            </button>
-            <button class="btn btn-sm btn-secondary" @click="zoomIn">
-              <i class="fas fa-search-plus"></i>
-            </button>
-            <button class="btn btn-sm btn-secondary" @click="zoomOut">
-              <i class="fas fa-search-minus"></i>
-            </button>
-            <button class="btn btn-sm btn-secondary" @click="resetView">
-              <i class="fas fa-expand"></i>
-            </button>
+          <i class="fas fa-redo"></i>
+          </button>
+          <button class="btn btn-sm btn-secondary" @click="zoomIn">
+          <i class="fas fa-search-plus"></i>
+          </button>
+          <button class="btn btn-sm btn-secondary" @click="zoomOut">
+          <i class="fas fa-search-minus"></i>
+          </button>
+          <button class="btn btn-sm btn-secondary" @click="resetView">
+          <i class="fas fa-expand"></i>
+          </button>
           </div>
         </div>
 
         <!-- 设计器画布 -->
         <div class="designer-canvas">
-          <div class="canvas-header">
-            <div class="flex items-center gap-4">
-              <span class="text-sm text-gray-600">流程名称：</span>
-              <input
-                type="text"
-                class="form-input"
-                placeholder="输入流程名称"
-                v-model="store.processConfig.name"
-              >
-            </div>
-          </div>
-
           <div class="canvas-content">
             <!-- 工具栏 -->
             <div class="toolbox">
@@ -183,14 +274,26 @@
               </div>
 
               <div class="toolbox-section">
-                <h4 class="toolbox-title">高级节点</h4>
+                <h4 class="toolbox-title">网关节点</h4>
                 <div class="toolbox-items">
-                  <div class="toolbox-item" draggable="true" @dragstart="onDragStart('subprocess')">
-                    <div class="node-icon subprocess">
-                      <i class="fas fa-sitemap"></i>
+                  <div class="toolbox-item" draggable="true" @dragstart="onDragStart('parallel')">
+                    <div class="node-icon parallel">
+                      <i class="fas fa-stream"></i>
                     </div>
-                    <span class="node-label">子流程</span>
+                    <span class="node-label">并行网关</span>
                   </div>
+                  <div class="toolbox-item" draggable="true" @dragstart="onDragStart('exclusive')">
+                    <div class="node-icon exclusive">
+                      <i class="fas fa-random"></i>
+                    </div>
+                    <span class="node-label">互斥网关</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="toolbox-section">
+                <h4 class="toolbox-title">事件与流程</h4>
+                <div class="toolbox-items">
                   <div class="toolbox-item" draggable="true" @dragstart="onDragStart('timer')">
                     <div class="node-icon timer">
                       <i class="fas fa-clock"></i>
@@ -202,6 +305,18 @@
                       <i class="fas fa-envelope"></i>
                     </div>
                     <span class="node-label">消息</span>
+                  </div>
+                  <div class="toolbox-item" draggable="true" @dragstart="onDragStart('event')">
+                    <div class="node-icon event">
+                      <i class="fas fa-bolt"></i>
+                </div>
+                    <span class="node-label">事件</span>
+                  </div>
+                  <div class="toolbox-item" draggable="true" @dragstart="onDragStart('subprocess')">
+                    <div class="node-icon subprocess">
+                      <i class="fas fa-sitemap"></i>
+                    </div>
+                    <span class="node-label">子流程</span>
                   </div>
                 </div>
               </div>
@@ -244,7 +359,7 @@
                        height: selectionBox.height + 'px'
                      }"></div>
                 
-                <!-- 动态流程节点 -->
+            <!-- 动态流程节点 -->
                 <div 
                   v-for="node in store.nodes" 
                   :key="node.id" 
@@ -256,26 +371,30 @@
                   :style="{ left: node.x + 'px', top: node.y + 'px' }" 
                   @mousedown="onNodeMouseDown($event, node)" 
                   @contextmenu.prevent.stop="onNodeContextMenu($event, node)">
-                  <div class="node-content">
-                    <div class="node-icon">
-                      <i :class="getNodeIcon(node.type)"></i>
-                    </div>
-                    <div class="node-label">{{ node.label }}</div>
-                  </div>
-                </div>
+            <div class="node-content">
+            <div class="node-icon">
+            <i :class="getNodeIcon(node.type)"></i>
+            </div>
+            <div class="node-label">{{ node.label }}</div>
+            </div>
+            </div>
 
                 <!-- 动态连接线 -->
-                <svg class="connections" width="100%" height="100%" style="position: absolute; top: 0; left: 0; z-index: 1;">
-                  <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="7"
-                            refX="9" refY="3.5" orient="auto">
-                      <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+                <svg class="connections" width="100%" height="100%">
+            <defs>
+                    <marker id="arrowhead" markerWidth="12" markerHeight="10"
+                            refX="11" refY="5" orient="auto">
+                      <polygon points="0 0, 12 5, 0 10" fill="#475569" />
+            </marker>
+                    <marker id="arrowhead-hover" markerWidth="12" markerHeight="10"
+                            refX="11" refY="5" orient="auto">
+                      <polygon points="0 0, 12 5, 0 10" fill="#3b82f6" />
                     </marker>
-                    <marker id="arrowhead-selected" markerWidth="10" markerHeight="7"
-                            refX="9" refY="3.5" orient="auto">
-                      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
-                    </marker>
-                  </defs>
+                    <marker id="arrowhead-selected" markerWidth="12" markerHeight="10"
+                            refX="11" refY="5" orient="auto">
+                      <polygon points="0 0, 12 5, 0 10" fill="#ef4444" />
+              </marker>
+              </defs>
                   <g style="pointer-events: none;">
                     <!-- 透明的宽路径用于捕获点击和悬停 -->
                     <path 
@@ -302,23 +421,50 @@
                       style="pointer-events: none;" 
                       :class="{ 'connection-hover': hoverConnection === conn }" />
                   </g>
-                </svg>
-              </div>
+                  <!-- 连接线标签 -->
+                  <g class="connection-labels" style="pointer-events: none;">
+                    <text 
+                      v-for="conn in store.connections.filter(c => c.label)" 
+                      :key="`${conn.id}-label`" 
+                      :x="getConnectionLabelPosition(conn).x" 
+                      :y="getConnectionLabelPosition(conn).y"
+                      text-anchor="middle"
+                      class="connection-label-text"
+                      :class="{ 'connection-label-selected': store.selectedConnection === conn.id }"
+                    >
+                      {{ conn.label }}
+                    </text>
+                  </g>
+            </svg>
+            </div>
+              
+              <!-- 小地图 -->
+              <MiniMap
+                :nodes="store.nodes"
+                :connections="store.connections"
+                :selected-nodes="store.selectedNodes"
+                :canvas-width="1000"
+                :canvas-height="500"
+                :zoom="store.zoom"
+                :pan-x="store.panX"
+                :pan-y="store.panY"
+                @navigate="onMinimapNavigate"
+              />
             </div>
 
             <!-- 属性面板 -->
             <div class="properties-panel">
-              <h4 class="panel-title">属性</h4>
+            <h4 class="panel-title">属性</h4>
               <!-- 节点属性 -->
-              <div class="properties-content" v-if="selectedNode">
-                <div class="property-group">
-                  <label class="property-label">节点名称</label>
-                  <input type="text" class="form-input" v-model="selectedNode.label">
-                </div>
-                <div class="property-group">
-                  <label class="property-label">类型</label>
-                  <input type="text" class="form-input" :value="selectedNode.type" readonly>
-                </div>
+            <div class="properties-content" v-if="selectedNode">
+            <div class="property-group">
+            <label class="property-label">节点名称</label>
+            <input type="text" class="form-input" v-model="selectedNode.label">
+            </div>
+            <div class="property-group">
+            <label class="property-label">类型</label>
+            <input type="text" class="form-input" :value="selectedNode.type" readonly>
+            </div>
                 <div class="property-group">
                   <label class="property-label">位置 (X, Y)</label>
                   <div class="flex gap-2">
@@ -326,34 +472,64 @@
                     <input type="number" class="form-input" v-model.number="selectedNode.y" readonly>
                   </div>
                 </div>
-                <div class="property-group" v-if="selectedNode.type === 'task'">
-                  <label class="property-label">执行者</label>
-                  <select class="form-select" v-model="selectedNode.assignee">
-                    <option value="">选择执行者</option>
-                    <option>销售经理</option>
-                    <option>财务总监</option>
-                    <option>系统自动</option>
-                  </select>
-                </div>
-                <div class="property-group" v-if="selectedNode.type === 'task'">
-                  <label class="property-label">超时设置</label>
-                  <input type="text" class="form-input" v-model="selectedNode.timeout" placeholder="24小时">
-                </div>
-                <div class="property-group">
-                  <label class="property-label">描述</label>
-                  <textarea class="form-textarea" rows="3" v-model="selectedNode.description" placeholder="节点描述..."></textarea>
-                </div>
+            <div class="property-group" v-if="selectedNode.type === 'task'">
+            <label class="property-label">执行者</label>
+            <select class="form-select" v-model="selectedNode.assignee">
+            <option value="">选择执行者</option>
+            <option>销售经理</option>
+            <option>财务总监</option>
+            <option>系统自动</option>
+            </select>
+            </div>
+            <div class="property-group" v-if="selectedNode.type === 'task'">
+            <label class="property-label">超时设置</label>
+            <input type="text" class="form-input" v-model="selectedNode.timeout" placeholder="24小时">
+            </div>
+            <div class="property-group">
+            <label class="property-label">描述</label>
+            <textarea class="form-textarea" rows="3" v-model="selectedNode.description" placeholder="节点描述..."></textarea>
+            </div>
                 <div class="property-group">
                   <button class="btn btn-danger w-full" @click="confirmDeleteNode">
                     <i class="fas fa-trash mr-2"></i>删除节点
                   </button>
-                </div>
+            </div>
               </div>
               <!-- 连接线属性 -->
-              <div class="properties-content" v-else-if="selectedConnection">
+              <div class="properties-content" v-else-if="selectedConnectionData">
+             <div class="property-group">
+                 <label class="property-label">连接类型</label>
+                   <input type="text" class="form-input" value="顺序流" readonly>
+                 </div>
+                 <div class="property-group">
+                  <label class="property-label">连接标签</label>
+                  <input 
+                    type="text" 
+                    class="form-input" 
+                    v-model="selectedConnectionData.label"
+                    @input="updateConnectionLabel"
+                    placeholder="例如：是/否、通过/拒绝"
+                  >
+                  <p class="text-xs text-gray-500 mt-1">将显示在连接线旁边</p>
+                 </div>
                 <div class="property-group">
-                  <label class="property-label">连接类型</label>
-                  <input type="text" class="form-input" value="顺序流" readonly>
+                  <label class="property-label">执行条件</label>
+                  <textarea 
+                    class="form-textarea" 
+                    rows="3" 
+                    v-model="selectedConnectionData.condition"
+                    @input="updateConnectionCondition"
+                    placeholder="例如：amount > 1000 或 status == 'approved'"
+                  ></textarea>
+                  <p class="text-xs text-gray-500 mt-1">流程执行时的判断条件（可选）</p>
+               </div>
+                <div class="property-group">
+                  <label class="property-label">源节点</label>
+                  <input type="text" class="form-input" :value="getNodeLabel(selectedConnectionData.from)" readonly>
+                </div>
+                <div class="property-group">
+                  <label class="property-label">目标节点</label>
+                  <input type="text" class="form-input" :value="getNodeLabel(selectedConnectionData.to)" readonly>
                 </div>
                 <div class="property-group">
                   <button class="btn btn-danger w-full" @click="confirmDeleteConnection">
@@ -369,11 +545,11 @@
                     流程配置
                   </label>
                   <p class="text-xs text-gray-500 mb-3">点击画布空白区域显示流程全局配置</p>
-                </div>
+              </div>
                 <div class="property-group">
                   <label class="property-label">流程名称</label>
                   <input type="text" class="form-input" v-model="store.processConfig.name">
-                </div>
+            </div>
                 <div class="property-group">
                   <label class="property-label">流程描述</label>
                   <textarea class="form-textarea" rows="3" v-model="store.processConfig.description" placeholder="描述此流程的用途和功能..."></textarea>
@@ -427,8 +603,8 @@
         </div>
 
         <div class="mt-4 text-sm text-gray-600 text-center">
-          <i class="fas fa-info-circle mr-1"></i>
-          拖拽左侧工具栏中的节点到画布中，拖拽画布中的节点移动位置，点击连接模式连接节点，选择节点或连接线编辑属性
+        <i class="fas fa-info-circle mr-1"></i>
+        拖拽左侧工具栏中的节点到画布中，拖拽画布中的节点移动位置，点击连接模式连接节点，选择节点或连接线编辑属性
         </div>
       </div>
     </main>
@@ -438,9 +614,15 @@
 <script>
 import { useDesignerStore } from '@/stores/designer'
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { exportToPNG, exportToSVG, exportToJSON, importFromJSON } from '@/utils/exportUtils'
+import { validateFlow as validateFlowUtil } from '@/utils/flowValidator'
+import MiniMap from '@/components/MiniMap.vue'
 
 export default {
   name: 'Designer',
+  components: {
+    MiniMap
+  },
   setup() {
     const store = useDesignerStore()
     
@@ -489,6 +671,11 @@ export default {
     })
     const isBoxSelecting = ref(false)
     
+    // 导出和验证
+    const showExportMenu = ref(false)
+    const showValidationDialog = ref(false)
+    const validationResult = ref(null)
+    
     // 计算属性
     const selectedNode = computed(() => {
       if (store.selectedNodes.length === 1) {
@@ -504,9 +691,32 @@ export default {
       return null
     })
     
+    const selectedConnectionData = computed(() => {
+      if (store.selectedConnection) {
+        return store.getConnectionById(store.selectedConnection)
+      }
+      return null
+    })
+    
     // 方法
     const onDragStart = (nodeType) => {
       draggedNodeType.value = nodeType
+    }
+    
+    const getNodeTypeLabel = (type) => {
+      const labels = {
+        start: '开始',
+        task: '任务',
+        gateway: '排他网关',
+        parallel: '并行网关',
+        exclusive: '互斥网关',
+        timer: '定时器',
+        message: '消息',
+        event: '事件',
+        subprocess: '子流程',
+        end: '结束'
+      }
+      return labels[type] || '未知节点'
     }
     
     const onDrop = (event) => {
@@ -518,7 +728,7 @@ export default {
         // 应用网格吸附
         x = store.snapToGridValue(x)
         y = store.snapToGridValue(y)
-        
+
         const newNode = {
           id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: draggedNodeType.value,
@@ -536,11 +746,14 @@ export default {
       const labels = {
         start: '开始',
         task: '任务',
-        gateway: '决策',
-        end: '结束',
-        subprocess: '子流程',
+        gateway: '排他网关',
+        parallel: '并行网关',
+        exclusive: '互斥网关',
         timer: '定时器',
-        message: '消息'
+        message: '消息',
+        event: '事件',
+        subprocess: '子流程',
+        end: '结束'
       }
       return labels[type] || '节点'
     }
@@ -550,10 +763,13 @@ export default {
         start: 'fas fa-play',
         task: 'fas fa-tasks',
         gateway: 'fas fa-question',
-        end: 'fas fa-stop',
-        subprocess: 'fas fa-sitemap',
+        parallel: 'fas fa-stream',
+        exclusive: 'fas fa-random',
         timer: 'fas fa-clock',
-        message: 'fas fa-envelope'
+        message: 'fas fa-envelope',
+        event: 'fas fa-bolt',
+        subprocess: 'fas fa-sitemap',
+        end: 'fas fa-stop'
       }
       return icons[type] || 'fas fa-circle'
     }
@@ -601,7 +817,7 @@ export default {
               // 应用对齐
               if (guides[0].axis === 'x') {
                 newX = guides[0].value
-              } else {
+        } else {
                 newY = guides[0].value
               }
             }
@@ -630,7 +846,7 @@ export default {
               store.addConnection(newConnection)
               store.isConnecting = false
               store.connectingFrom = null
-            } else {
+      } else {
               store.connectingFrom = draggingNode.value.id
             }
           }
@@ -747,24 +963,51 @@ export default {
       return `M ${x1} ${y1} Q ${cpX} ${cpY} ${x2} ${y2}`
     }
     
+    // 计算连接线标签位置（在曲线中点附近）
+    const getConnectionLabelPosition = (conn) => {
+      const fromNode = store.getNodeById(conn.from)
+      const toNode = store.getNodeById(conn.to)
+      if (!fromNode || !toNode) return { x: 0, y: 0 }
+      
+      const x1 = fromNode.x + 24
+      const y1 = fromNode.y + 24
+      const x2 = toNode.x + 24
+      const y2 = toNode.y + 24
+      
+      // 在贝塞尔曲线的中点（t=0.5）计算位置
+      const dx = x2 - x1
+      const dy = y2 - y1
+      const cpX = x1 + dx / 2
+      const cpY = y1 + dy / 2 - Math.abs(dx) * 0.15
+      
+      const t = 0.5
+      const x = (1-t)*(1-t)*x1 + 2*(1-t)*t*cpX + t*t*x2
+      const y = (1-t)*(1-t)*y1 + 2*(1-t)*t*cpY + t*t*y2
+      
+      // 标签稍微偏移一点，避免与线重叠
+      return { x, y: y - 15 }
+    }
+    
     const selectConnection = (conn) => {
       store.selectConnection(conn.id)
     }
     
     const getConnectionColor = (conn) => {
       if (conn.id === store.selectedConnection) return '#ef4444'
-      if (conn === hoverConnection.value) return '#60a5fa'
-      return '#94a3b8'
+      if (conn === hoverConnection.value) return '#3b82f6'
+      return '#475569'
     }
     
     const getConnectionWidth = (conn) => {
       if (conn.id === store.selectedConnection) return '3'
-      if (conn === hoverConnection.value) return '2.5'
-      return '2'
+      if (conn === hoverConnection.value) return '3'
+      return '2.5'
     }
     
     const getConnectionMarker = (conn) => {
-      return conn.id === store.selectedConnection ? 'url(#arrowhead-selected)' : 'url(#arrowhead)'
+      if (conn.id === store.selectedConnection) return 'url(#arrowhead-selected)'
+      if (conn === hoverConnection.value) return 'url(#arrowhead-hover)'
+      return 'url(#arrowhead)'
     }
     
     // 画布操作
@@ -985,7 +1228,31 @@ export default {
     
     const editConnectionLabel = () => {
       closeContextMenu()
-      console.log('编辑连接线标签功能待实现')
+      // 标签可以直接在属性面板编辑
+    }
+    
+    // 更新连接标签
+    const updateConnectionLabel = () => {
+      if (selectedConnectionData.value) {
+        store.updateConnection(store.selectedConnection, {
+          label: selectedConnectionData.value.label
+        })
+      }
+    }
+    
+    // 更新连接条件
+    const updateConnectionCondition = () => {
+      if (selectedConnectionData.value) {
+        store.updateConnection(store.selectedConnection, {
+          condition: selectedConnectionData.value.condition
+        })
+      }
+    }
+    
+    // 获取节点标签
+    const getNodeLabel = (nodeId) => {
+      const node = store.getNodeById(nodeId)
+      return node ? node.label : '未知节点'
     }
     
     // 删除确认
@@ -1057,6 +1324,150 @@ export default {
       store.toggleShowGrid()
     }
     
+    // 小地图导航
+    const onMinimapNavigate = ({ panX, panY }) => {
+      store.setPan(panX, panY)
+    }
+    
+    // 导出功能
+    const toggleExportMenu = () => {
+      showExportMenu.value = !showExportMenu.value
+    }
+    
+    const exportAsPNG = async () => {
+      try {
+        const canvasElement = document.querySelector('.canvas-paper')
+        await exportToPNG(canvasElement, `${store.processConfig.name || '流程图'}.png`)
+        showExportMenu.value = false
+        alert('PNG导出成功！')
+      } catch (error) {
+        alert('PNG导出失败：' + error.message)
+      }
+    }
+    
+    const exportAsSVG = () => {
+      try {
+        const flowData = {
+          nodes: store.nodes,
+          connections: store.connections,
+          processConfig: store.processConfig
+        }
+        exportToSVG(flowData, `${store.processConfig.name || '流程图'}.svg`)
+        showExportMenu.value = false
+        alert('SVG导出成功！')
+      } catch (error) {
+        alert('SVG导出失败：' + error.message)
+      }
+    }
+    
+    const exportAsJSON = () => {
+      try {
+        const flowData = {
+          nodes: store.nodes,
+          connections: store.connections,
+          processConfig: store.processConfig,
+          version: '1.0.0',
+          exportDate: new Date().toISOString()
+        }
+        exportToJSON(flowData, `${store.processConfig.name || '流程图'}.json`)
+        showExportMenu.value = false
+        alert('JSON导出成功！')
+      } catch (error) {
+        alert('JSON导出失败：' + error.message)
+      }
+    }
+    
+    const importJSON = () => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.json'
+      input.onchange = async (e) => {
+        try {
+          const file = e.target.files[0]
+          if (!file) return
+          
+          const data = await importFromJSON(file)
+          
+          // 确认导入
+          if (!confirm(`确定要导入流程"${data.processConfig?.name || '未命名流程'}"吗？当前流程将被替换。`)) {
+            return
+          }
+          
+          // 导入数据
+          store.nodes = data.nodes || []
+          store.connections = data.connections || []
+          if (data.processConfig) {
+            store.updateProcessConfig(data.processConfig)
+          }
+          
+          // 清空历史记录和选择
+          store.history = []
+          store.historyIndex = -1
+          store.clearSelection()
+          
+          showExportMenu.value = false
+          alert('流程导入成功！')
+        } catch (error) {
+          alert('导入失败：' + error.message)
+        }
+      }
+      input.click()
+    }
+    
+    // 流程验证
+    const validateFlow = () => {
+      validationResult.value = validateFlowUtil(store.nodes, store.connections)
+      showValidationDialog.value = true
+    }
+    
+    // 本地存储
+    const STORAGE_KEY = 'workflow_designer_autosave'
+    
+    const saveToLocal = () => {
+      try {
+        const data = {
+          nodes: store.nodes,
+          connections: store.connections,
+          processConfig: store.processConfig,
+          savedAt: new Date().toISOString()
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+        alert('保存成功！')
+      } catch (error) {
+        alert('保存失败：' + error.message)
+      }
+    }
+    
+    const loadFromLocal = () => {
+      try {
+        const data = localStorage.getItem(STORAGE_KEY)
+        if (data) {
+          const parsed = JSON.parse(data)
+          return parsed
+        }
+      } catch (error) {
+        console.error('加载本地数据失败:', error)
+      }
+      return null
+    }
+    
+    const autoSave = () => {
+      try {
+        const data = {
+          nodes: store.nodes,
+          connections: store.connections,
+          processConfig: store.processConfig,
+          savedAt: new Date().toISOString()
+        }
+        localStorage.setItem(STORAGE_KEY + '_auto', JSON.stringify(data))
+      } catch (error) {
+        console.error('自动保存失败:', error)
+      }
+    }
+    
+    // 设置自动保存定时器
+    let autoSaveTimer = null
+    
     // 键盘事件
     const onKeyDown = (event) => {
       if (event.ctrlKey || event.metaKey) {
@@ -1103,7 +1514,19 @@ export default {
       document.addEventListener('keydown', onKeyDown)
       document.addEventListener('click', closeContextMenu)
       
-      // 初始化一些示例节点
+      // 尝试加载本地保存的数据
+      const localData = loadFromLocal()
+      if (localData && localData.nodes && localData.nodes.length > 0) {
+        if (confirm('检测到本地保存的流程数据，是否加载？')) {
+          store.nodes = localData.nodes
+          store.connections = localData.connections || []
+          if (localData.processConfig) {
+            store.updateProcessConfig(localData.processConfig)
+          }
+        }
+      }
+      
+      // 如果仍然没有节点，初始化一些示例节点
       if (store.nodes.length === 0) {
         store.nodes.push(
           { id: 'node_1', type: 'start', label: '开始', x: 100, y: 100 },
@@ -1117,11 +1540,22 @@ export default {
           { id: 'conn_3', from: 'node_3', to: 'node_4' }
         )
       }
+      
+      // 启动自动保存（每30秒）
+      autoSaveTimer = setInterval(autoSave, 30000)
     })
     
     onBeforeUnmount(() => {
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('click', closeContextMenu)
+      
+      // 清理自动保存定时器
+      if (autoSaveTimer) {
+        clearInterval(autoSaveTimer)
+      }
+      
+      // 最后一次自动保存
+      autoSave()
     })
     
     return {
@@ -1134,11 +1568,16 @@ export default {
       selectionBox,
       selectedNode,
       selectedConnection,
+      selectedConnectionData,
+      showExportMenu,
+      showValidationDialog,
+      validationResult,
       onDragStart,
       onDrop,
       getNodeIcon,
       onNodeMouseDown,
       getConnectionPath,
+      getConnectionLabelPosition,
       selectConnection,
       getConnectionColor,
       getConnectionWidth,
@@ -1158,6 +1597,9 @@ export default {
       editNodeProperties,
       selectAllNodes,
       editConnectionLabel,
+      updateConnectionLabel,
+      updateConnectionCondition,
+      getNodeLabel,
       confirmDeleteNode,
       confirmDeleteConnection,
       executeDelete,
@@ -1166,7 +1608,16 @@ export default {
       redo,
       toggleConnectionMode,
       toggleSnapToGrid,
-      toggleShowGrid
+      toggleShowGrid,
+      toggleExportMenu,
+      exportAsPNG,
+      exportAsSVG,
+      exportAsJSON,
+      importJSON,
+      validateFlow,
+      saveToLocal,
+      onMinimapNavigate,
+      getNodeTypeLabel
     }
   }
 }
@@ -1178,19 +1629,15 @@ export default {
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   background: #fafbfc;
-  min-height: 600px;
-}
-
-.canvas-header {
-  padding: 16px 20px;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-  border-radius: 10px 10px 0 0;
+  height: calc(100vh - 280px);
+  min-height: 500px;
+  overflow: hidden;
 }
 
 .canvas-content {
   display: flex;
-  height: 500px;
+  height: 100%;
+  min-height: 400px;
 }
 
 .toolbox {
@@ -1199,6 +1646,8 @@ export default {
   border-right: 1px solid #e5e7eb;
   padding: 16px;
   overflow-y: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .toolbox-section {
@@ -1261,6 +1710,10 @@ export default {
   transform: rotate(45deg);
 }
 
+.node-icon.gateway i {
+  transform: rotate(-45deg);
+}
+
 .node-icon.end {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
@@ -1277,10 +1730,33 @@ export default {
   background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
 }
 
+.node-icon.parallel {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  transform: rotate(45deg);
+}
+
+.node-icon.parallel i {
+  transform: rotate(-45deg);
+}
+
+.node-icon.exclusive {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  transform: rotate(45deg);
+}
+
+.node-icon.exclusive i {
+  transform: rotate(-45deg);
+}
+
+.node-icon.event {
+  background: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);
+}
+
 .canvas-area {
   flex: 1;
   position: relative;
   background: #f8fafc;
+  z-index: 2;
 }
 
 .canvas-paper {
@@ -1358,11 +1834,58 @@ export default {
   border-radius: 50%;
 }
 
+.parallel-node .node-icon {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  transform: rotate(45deg);
+}
+
+.exclusive-node .node-icon {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  transform: rotate(45deg);
+}
+
+.timer-node .node-icon {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  border-radius: 50%;
+}
+
+.message-node .node-icon {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  border-radius: 50%;
+}
+
+.event-node .node-icon {
+  background: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);
+  border-radius: 50%;
+}
+
+.subprocess-node .node-icon {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
 .connections {
   position: absolute;
   top: 0;
   left: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+  z-index: 5;
+}
+
+.connection-label-text {
+  fill: #374151;
+  font-size: 12px;
+  font-weight: 500;
+  background: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.connection-label-selected {
+  fill: #ef4444;
+  font-weight: 600;
 }
 
 .properties-panel {
@@ -1371,6 +1894,8 @@ export default {
   border-left: 1px solid #e5e7eb;
   padding: 16px;
   overflow-y: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .panel-title {
@@ -1574,6 +2099,145 @@ button:disabled {
   to {
     opacity: 1;
   }
+}
+
+/* 下拉菜单 */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  padding: 4px 0;
+  min-width: 180px;
+  z-index: 1000;
+  animation: menuFadeIn 0.15s ease-out;
+}
+
+.dropdown-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #374151;
+  transition: background-color 0.15s;
+}
+
+.dropdown-item:hover {
+  background-color: #f3f4f6;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 4px 0;
+}
+
+/* 更大的模态对话框 */
+.modal-dialog.modal-large {
+  min-width: 600px;
+  max-width: 800px;
+}
+
+/* 验证结果样式 */
+.validation-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-item .label {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.summary-item .value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.success-message {
+  padding: 16px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  color: #166534;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.issue-section {
+  margin-bottom: 20px;
+}
+
+.issue-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.issue-title.error {
+  color: #dc2626;
+}
+
+.issue-title.warning {
+  color: #d97706;
+}
+
+.issue-item {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.issue-item.error {
+  background: #fef2f2;
+  border-left: 4px solid #dc2626;
+}
+
+.issue-item.warning {
+  background: #fffbeb;
+  border-left: 4px solid #d97706;
+}
+
+.issue-message {
+  font-size: 14px;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.issue-details {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* 警告按钮样式 */
+.btn-warning {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fbbf24;
+}
+
+.btn-warning:hover {
+  background: #fde68a;
 }
 </style>
 
