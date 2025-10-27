@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>样式测试 - ProcessList</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@latest/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@latest/css/all.min.css">
+    <style>
+        /* 全局样式 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+        }
+
+        /* 搜索和筛选栏布局 - 与原型完全一致 */
+        .search-filter-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* 搜索框样式 */
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px 16px;
+            transition: all 0.2s;
+            max-width: 400px;
+            min-width: 250px;
+            flex: 1;
+        }
+
+        .search-box:focus-within {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-box i {
+            color: #6b7280;
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        .search-box input {
+            border: none;
+            outline: none;
+            flex: 1;
+            font-size: 14px;
+            color: #374151;
+            background: transparent;
+        }
+
+        .search-box input::placeholder {
+            color: #9ca3af;
+        }
+
+        /* 视图切换 */
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            background: #f3f4f6;
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .view-toggle-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .view-toggle-btn:hover {
+            color: #111827;
+        }
+
+        .view-toggle-btn.active {
+            background: white;
+            color: #3b82f6;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 表单选择框样式 */
+        .form-select {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 120px;
+        }
+
+        .form-select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .form-select:hover {
+            border-color: #d1d5db;
+        }
+
+        .sort-select {
+            width: 180px;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            line-height: 1;
+            text-decoration: none;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            gap: 6px;
+        }
+
+        .btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* 主要按钮 */
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #2563eb;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 次要按钮 */
+        .btn-secondary {
+            background: white;
+            color: #374151;
+            border-color: #d1d5db;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #f9fafb;
+            border-color: #9ca3af;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-6">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">ProcessList 样式测试</h1>
+
+        <!-- 测试卡片样式 -->
+        <div class="mb-8">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">1. Card 容器样式测试</h2>
+            <div class="card mb-6" style="padding: 20px;">
+                <div class="search-filter-row" style="padding: 0;">
+                    <!-- 搜索框 -->
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="搜索流程名称、描述、创建者..." value="">
+                    </div>
+
+                    <!-- 右侧操作 -->
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <!-- 视图切换 -->
+                        <div class="view-toggle">
+                            <button class="view-toggle-btn" onclick="switchView('card')">
+                                <i class="fas fa-th-large"></i>
+                            </button>
+                            <button class="view-toggle-btn active" onclick="switchView('list')">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
+
+                        <!-- 排序 -->
+                        <select class="form-select sort-select">
+                            <option value="updated">最近更新</option>
+                            <option value="created">创建时间</option>
+                            <option value="name-asc">名称 A-Z</option>
+                            <option value="name-desc">名称 Z-A</option>
+                            <option value="instances">实例数量</option>
+                        </select>
+
+                        <!-- 高级筛选按钮 -->
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-filter"></i>
+                            筛选
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 快速筛选标签 -->
+                <div class="flex items-center gap-2 mt-4 flex-wrap">
+                    <span class="text-sm text-gray-600">快速筛选：</span>
+                    <button class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                        全部 (24)
+                    </button>
+                    <button class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                        活跃 (18)
+                    </button>
+                    <button class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+                        草稿 (4)
+                    </button>
+                    <button class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                        停用 (2)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对比测试 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">2. 当前实现 (Vue)</h2>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="space-y-2 text-sm">
+                        <div><strong>Card样式:</strong> background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border: 1px solid #e5e7eb;</div>
+                        <div><strong>Padding:</strong> 20px (内联样式)</div>
+                        <div><strong>结构:</strong> .card > .search-filter-row</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">3. 原型实现 (HTML)</h2>
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <div class="space-y-2 text-sm">
+                        <div><strong>Card样式:</strong> background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border: 1px solid #e5e7eb;</div>
+                        <div><strong>Padding:</strong> 20px (CSS样式)</div>
+                        <div><strong>结构:</strong> .card > .search-filter-row</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 尺寸检查工具 -->
+        <div class="mt-8">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">4. 尺寸检查工具</h2>
+            <div class="bg-gray-100 p-4 rounded-lg">
+                <p class="text-sm text-gray-600 mb-2">使用浏览器的开发者工具检查以下元素的尺寸：</p>
+                <ul class="text-sm text-gray-700 space-y-1">
+                    <li>• <strong>Card容器:</strong> 应该是完整的白色区域，带有圆角和阴影</li>
+                    <li>• <strong>内边距:</strong> Card容器内部应该有20px的padding</li>
+                    <li>• <strong>搜索框:</strong> flex布局，图标在左侧，输入框占满剩余空间</li>
+                    <li>• <strong>视图切换:</strong> 灰色背景，激活按钮白色背景</li>
+                    <li>• <strong>按钮尺寸:</strong> 检查返回按钮等是否为正确尺寸</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchView(mode) {
+            const buttons = document.querySelectorAll('.view-toggle-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            if (mode === 'card') {
+                document.querySelector('.view-toggle-btn:first-child').classList.add('active');
+            } else {
+                document.querySelector('.view-toggle-btn:last-child').classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
