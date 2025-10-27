@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { getAllForms, getFormById } from '@/data/mockForms'
 
 export const useDesignerStore = defineStore('designer', {
   state: () => ({
@@ -27,7 +28,8 @@ export const useDesignerStore = defineStore('designer', {
       name: '未命名流程',
       description: '',
       boundFormId: null,
-      category: '默认分类'
+      category: '默认分类',
+      fieldMapping: {} // 表单字段映射
     },
     
     // 网格和对齐
@@ -58,6 +60,16 @@ export const useDesignerStore = defineStore('designer', {
     // 获取节点的所有连接
     getNodeConnections: (state) => (nodeId) => {
       return state.connections.filter(c => c.from === nodeId || c.to === nodeId)
+    },
+    
+    // 表单相关 getters
+    availableForms: () => getAllForms(),
+    
+    getFormById: () => (id) => getFormById(id),
+    
+    boundForm: (state) => {
+      if (!state.processConfig.boundFormId) return null
+      return getFormById(state.processConfig.boundFormId)
     }
   },
   
@@ -359,6 +371,49 @@ export const useDesignerStore = defineStore('designer', {
     // 更新流程配置
     updateProcessConfig(config) {
       this.processConfig = { ...this.processConfig, ...config }
+    },
+    
+    // 更新字段映射
+    updateFieldMapping(fieldName, variableName) {
+      if (!this.processConfig.fieldMapping) {
+        this.processConfig.fieldMapping = {}
+      }
+      if (variableName) {
+        this.processConfig.fieldMapping[fieldName] = variableName
+      } else {
+        delete this.processConfig.fieldMapping[fieldName]
+      }
+    },
+    
+    // 自动映射同名字段
+    autoMapFields() {
+      if (!this.processConfig.boundFormId) return
+      
+      const form = getFormById(this.processConfig.boundFormId)
+      if (!form) return
+      
+      if (!this.processConfig.fieldMapping) {
+        this.processConfig.fieldMapping = {}
+      }
+      
+      // 自动匹配同名字段
+      form.fields.forEach(field => {
+        // 如果字段名和变量名相同，则自动映射
+        if (!this.processConfig.fieldMapping[field.name]) {
+          this.processConfig.fieldMapping[field.name] = field.name
+        }
+      })
+    },
+    
+    // 清除字段映射
+    clearFieldMapping() {
+      this.processConfig.fieldMapping = {}
+    },
+    
+    // 获取字段映射
+    getFieldMapping(fieldName) {
+      if (!this.processConfig.fieldMapping) return null
+      return this.processConfig.fieldMapping[fieldName] || null
     },
     
     // 网格吸附

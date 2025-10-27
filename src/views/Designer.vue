@@ -140,6 +140,68 @@
           </div>
         </div>
 
+        <!-- 表单预览对话框 -->
+        <div v-if="showFormPreview && store.boundForm" class="modal-overlay" @click="showFormPreview = false">
+          <div class="modal-dialog modal-large" @click.stop>
+            <div class="modal-header">
+              <i class="fas fa-file-alt text-blue-500 mr-2"></i>
+              表单预览: {{ store.boundForm.name }}
+            </div>
+            <div class="modal-body">
+              <!-- 表单基本信息 -->
+              <div class="mb-4 pb-4 border-b border-gray-200">
+                <p class="text-sm text-gray-600">{{ store.boundForm.description }}</p>
+                <p class="text-xs text-gray-500 mt-1">
+                  <i class="fas fa-tag mr-1"></i>
+                  分类: {{ store.boundForm.category }}
+                </p>
+              </div>
+
+              <!-- 表单字段列表 -->
+              <div>
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">表单字段</h4>
+                <div class="space-y-2">
+                  <div 
+                    v-for="(field, index) in store.boundForm.fields" 
+                    :key="index"
+                    class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div class="flex items-start justify-between">
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                          <span class="text-sm font-medium text-gray-900">{{ field.name }}</span>
+                          <span v-if="field.required" class="text-red-500 text-xs">*</span>
+                          <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
+                            {{ getFieldTypeLabel(field.type) }}
+                          </span>
+                        </div>
+                        <p v-if="field.description" class="text-xs text-gray-500 mt-1">
+                          {{ field.description }}
+                        </p>
+                        <div v-if="field.options" class="mt-2">
+                          <p class="text-xs text-gray-600 mb-1">选项:</p>
+                          <div class="flex flex-wrap gap-1">
+                            <span 
+                              v-for="option in field.options" 
+                              :key="option"
+                              class="px-2 py-0.5 bg-white border border-gray-300 text-xs rounded">
+                              {{ option }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="showFormPreview = false">
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- 验证结果对话框 -->
         <div v-if="showValidationDialog" class="modal-overlay" @click="showValidationDialog = false">
           <div class="modal-dialog modal-large" @click.stop>
@@ -558,15 +620,85 @@
                   <label class="property-label">绑定表单</label>
                   <select class="form-select" v-model="store.processConfig.boundFormId">
                     <option value="">选择业务表单</option>
-                    <option value="form-001">订单申请表</option>
-                    <option value="form-002">请假申请表</option>
-                    <option value="form-003">采购申请表</option>
-                    <option value="form-004">报销申请表</option>
+                    <optgroup 
+                      v-for="category in formCategories" 
+                      :key="category" 
+                      :label="category">
+                      <option 
+                        v-for="form in getFormsByCategory(category)" 
+                        :key="form.id" 
+                        :value="form.id">
+                        {{ form.name }}
+                      </option>
+                    </optgroup>
                   </select>
-                  <p class="text-xs text-gray-500 mt-1" v-if="store.processConfig.boundFormId">
-                    已绑定表单
+                  <p class="text-xs text-gray-500 mt-1" v-if="store.boundForm">
+                    <i class="fas fa-check-circle text-green-500 mr-1"></i>
+                    已绑定: {{ store.boundForm.name }}
+                  </p>
+                  <button 
+                    v-if="store.boundForm" 
+                    class="btn btn-sm btn-secondary mt-2 w-full"
+                    @click="showFormPreview = true">
+                    <i class="fas fa-eye mr-1"></i>预览表单
+                  </button>
+                </div>
+                
+                <!-- 字段映射配置 -->
+                <div v-if="store.boundForm" class="property-group border-t pt-4 mt-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <label class="property-label mb-0">
+                      <i class="fas fa-link text-blue-500 mr-1"></i>
+                      字段映射
+                    </label>
+                    <button 
+                      class="btn btn-xs btn-secondary"
+                      @click="autoMapAllFields"
+                      title="自动映射同名字段">
+                      <i class="fas fa-magic mr-1"></i>自动映射
+                    </button>
+                  </div>
+                  
+                  <div v-if="store.boundForm.fields.length > 0" class="space-y-2">
+                    <div 
+                      v-for="field in store.boundForm.fields" 
+                      :key="field.name"
+                      class="field-mapping-item"
+                      :class="{ 'required-not-mapped': field.required && !getFieldMapping(field.name) }">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 flex-1">
+                          <span class="text-sm text-gray-900">{{ field.name }}</span>
+                          <span v-if="field.required" class="text-red-500 text-xs">*</span>
+                          <span 
+                            v-if="getFieldMapping(field.name)"
+                            class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded">
+                            已映射
+                          </span>
+                          <span 
+                            v-else-if="field.required"
+                            class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded">
+                            未映射
+                          </span>
+                        </div>
+                      </div>
+                      <div class="mt-2">
+                        <input 
+                          type="text"
+                          class="form-input text-sm"
+                          :placeholder="field.required ? '必填：请输入流程变量名' : '输入流程变量名（可选）'"
+                          :value="getFieldMapping(field.name) || ''"
+                          @input="updateFieldMapping(field.name, $event.target.value)"
+                        >
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <p class="text-xs text-gray-500 mt-3">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    将表单字段映射到流程变量，用于流程执行时传递数据
                   </p>
                 </div>
+                
                 <div class="property-group">
                   <label class="property-label">流程分类</label>
                   <select class="form-select" v-model="store.processConfig.category">
@@ -617,6 +749,7 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { exportToPNG, exportToSVG, exportToJSON, importFromJSON } from '@/utils/exportUtils'
 import { validateFlow as validateFlowUtil } from '@/utils/flowValidator'
 import MiniMap from '@/components/MiniMap.vue'
+import { getCategories, getFormsByCategory } from '@/data/mockForms'
 
 export default {
   name: 'Designer',
@@ -628,6 +761,7 @@ export default {
     
     // 本地UI状态
     const draggedNodeType = ref(null)
+    const showFormPreview = ref(false)
     const draggingNode = ref(null)
     const isDragging = ref(false)
     const dragOffset = ref({ x: 0, y: 0 })
@@ -697,6 +831,8 @@ export default {
       }
       return null
     })
+    
+    const formCategories = computed(() => getCategories())
     
     // 方法
     const onDragStart = (nodeType) => {
@@ -802,10 +938,24 @@ export default {
           let newX = (event.clientX - canvasRect.left) / store.zoom - dragOffset.value.x
           let newY = (event.clientY - canvasRect.top) / store.zoom - dragOffset.value.y
           
+          // 获取画布边界（考虑到缩放）
+          const canvasWidth = canvasRect.width / store.zoom
+          const canvasHeight = canvasRect.height / store.zoom
+          const nodeWidth = 48
+          const nodeHeight = 48
+          
+          // 边界限制：防止节点超出画布
+          newX = Math.max(0, Math.min(newX, canvasWidth - nodeWidth))
+          newY = Math.max(0, Math.min(newY, canvasHeight - nodeHeight))
+          
           // 应用网格吸附
           if (store.snapToGrid) {
             newX = store.snapToGridValue(newX)
             newY = store.snapToGridValue(newY)
+            
+            // 重新应用边界限制（因为网格吸附可能会超出边界）
+            newX = Math.max(0, Math.min(newX, canvasWidth - nodeWidth))
+            newY = Math.max(0, Math.min(newY, canvasHeight - nodeHeight))
           }
           
           // 检测对齐
@@ -817,7 +967,7 @@ export default {
               // 应用对齐
               if (guides[0].axis === 'x') {
                 newX = guides[0].value
-        } else {
+              } else {
                 newY = guides[0].value
               }
             }
@@ -950,11 +1100,13 @@ export default {
       const toNode = store.getNodeById(conn.to)
       if (!fromNode || !toNode) return ''
       
-      const x1 = fromNode.x + 24
-      const y1 = fromNode.y + 24
-      const x2 = toNode.x + 24
-      const y2 = toNode.y + 24
+      // 动态计算连接点：从源节点右侧连接到目标节点左侧
+      const x1 = fromNode.x + 48  // 源节点右侧
+      const y1 = fromNode.y + 24  // 源节点中心Y
+      const x2 = toNode.x          // 目标节点左侧
+      const y2 = toNode.y + 24     // 目标节点中心Y
       
+      // 计算控制点，确保曲线平滑
       const dx = x2 - x1
       const dy = y2 - y1
       const cpX = x1 + dx / 2
@@ -969,10 +1121,11 @@ export default {
       const toNode = store.getNodeById(conn.to)
       if (!fromNode || !toNode) return { x: 0, y: 0 }
       
-      const x1 = fromNode.x + 24
-      const y1 = fromNode.y + 24
-      const x2 = toNode.x + 24
-      const y2 = toNode.y + 24
+      // 使用相同的连接点计算方法
+      const x1 = fromNode.x + 48  // 源节点右侧
+      const y1 = fromNode.y + 24  // 源节点中心Y
+      const x2 = toNode.x          // 目标节点左侧
+      const y2 = toNode.y + 24     // 目标节点中心Y
       
       // 在贝塞尔曲线的中点（t=0.5）计算位置
       const dx = x2 - x1
@@ -1253,6 +1406,36 @@ export default {
     const getNodeLabel = (nodeId) => {
       const node = store.getNodeById(nodeId)
       return node ? node.label : '未知节点'
+    }
+    
+    // 获取字段类型标签
+    const getFieldTypeLabel = (type) => {
+      const labels = {
+        text: '文本',
+        number: '数字',
+        date: '日期',
+        datetime: '日期时间',
+        select: '下拉选择',
+        radio: '单选',
+        checkbox: '多选',
+        textarea: '多行文本',
+        boolean: '布尔值'
+      }
+      return labels[type] || type
+    }
+    
+    // 字段映射相关方法
+    const getFieldMapping = (fieldName) => {
+      return store.getFieldMapping(fieldName)
+    }
+    
+    const updateFieldMapping = (fieldName, variableName) => {
+      store.updateFieldMapping(fieldName, variableName.trim())
+    }
+    
+    const autoMapAllFields = () => {
+      store.autoMapFields()
+      alert('自动映射完成！已为同名字段创建映射。')
     }
     
     // 删除确认
@@ -1572,6 +1755,9 @@ export default {
       showExportMenu,
       showValidationDialog,
       validationResult,
+      showFormPreview,
+      formCategories,
+      getFormsByCategory,
       onDragStart,
       onDrop,
       getNodeIcon,
@@ -1600,6 +1786,10 @@ export default {
       updateConnectionLabel,
       updateConnectionCondition,
       getNodeLabel,
+      getFieldTypeLabel,
+      getFieldMapping,
+      updateFieldMapping,
+      autoMapAllFields,
       confirmDeleteNode,
       confirmDeleteConnection,
       executeDelete,
@@ -2017,6 +2207,11 @@ export default {
   animation: dialogSlideIn 0.2s ease-out;
 }
 
+.modal-dialog.modal-large {
+  min-width: 600px;
+  max-width: 800px;
+}
+
 @keyframes dialogSlideIn {
   from {
     opacity: 0;
@@ -2140,6 +2335,30 @@ button:disabled {
 .modal-dialog.modal-large {
   min-width: 600px;
   max-width: 800px;
+}
+
+/* 字段映射样式 */
+.field-mapping-item {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.field-mapping-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+}
+
+.field-mapping-item.required-not-mapped {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.field-mapping-item.required-not-mapped:hover {
+  border-color: #dc2626;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2);
 }
 
 /* 验证结果样式 */
