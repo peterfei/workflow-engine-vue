@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { getAllForms, getFormById } from '@/data/mockForms'
+import { getAllFormsIncludingCustom, getFormByIdIncludingCustom } from '@/data/mockForms'
 
 export const useDesignerStore = defineStore('designer', {
   state: () => ({
@@ -63,13 +63,13 @@ export const useDesignerStore = defineStore('designer', {
     },
     
     // 表单相关 getters
-    availableForms: () => getAllForms(),
+    availableForms: () => getAllFormsIncludingCustom(),
     
-    getFormById: () => (id) => getFormById(id),
+    getFormById: () => (id) => getFormByIdIncludingCustom(id),
     
     boundForm: (state) => {
       if (!state.processConfig.boundFormId) return null
-      return getFormById(state.processConfig.boundFormId)
+      return getFormByIdIncludingCustom(state.processConfig.boundFormId)
     }
   },
   
@@ -389,20 +389,22 @@ export const useDesignerStore = defineStore('designer', {
     autoMapFields() {
       if (!this.processConfig.boundFormId) return
       
-      const form = getFormById(this.processConfig.boundFormId)
+      const form = getFormByIdIncludingCustom(this.processConfig.boundFormId)
       if (!form) return
       
       if (!this.processConfig.fieldMapping) {
         this.processConfig.fieldMapping = {}
       }
       
-      // 自动匹配同名字段
-      form.fields.forEach(field => {
-        // 如果字段名和变量名相同，则自动映射
-        if (!this.processConfig.fieldMapping[field.name]) {
-          this.processConfig.fieldMapping[field.name] = field.name
-        }
-      })
+             // 自动匹配同名字段
+       if (form && form.fields) {
+         form.fields.forEach(field => {
+           // 如果字段名和变量名相同，则自动映射
+           if (!this.processConfig.fieldMapping[field.name]) {
+             this.processConfig.fieldMapping[field.name] = field.name
+           }
+         })
+       }
     },
     
     // 清除字段映射

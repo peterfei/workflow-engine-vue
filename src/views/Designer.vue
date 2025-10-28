@@ -57,9 +57,9 @@
         <i class="fas fa-save"></i>
         保存草稿
         </button>
-          <button class="btn btn-primary">
+          <button class="btn btn-primary" @click="publishProcess">
              <i class="fas fa-play"></i>
-             发布流程
+             {{ publishButtonText }}
            </button>
          </div>
       </div>
@@ -135,6 +135,49 @@
               <button class="btn btn-danger" @click="executeDelete">
                 <i class="fas fa-trash mr-2"></i>
                 确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 发布流程对话框 -->
+        <div v-if="showPublishDialog" class="modal-overlay" @click="cancelPublish">
+          <div class="modal-dialog" @click.stop>
+            <div class="modal-header">
+              <i class="fas fa-rocket text-blue-500 mr-2"></i>
+              {{ isEditMode ? '更新流程' : '发布流程' }}
+            </div>
+            <div class="modal-body">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">流程名称 *</label>
+                  <input 
+                    type="text" 
+                    class="form-input w-full"
+                    v-model="publishFormData.name"
+                    placeholder="请输入流程名称"
+                    required>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">流程描述</label>
+                  <textarea 
+                    class="form-input w-full"
+                    v-model="publishFormData.description"
+                    placeholder="描述此流程的用途和功能..."
+                    rows="3"></textarea>
+                </div>
+                <div class="text-sm text-gray-500">
+                  <p><i class="fas fa-info-circle mr-1"></i> 发布后流程将出现在流程列表中</p>
+                  <p class="mt-1"><i class="fas fa-sitemap mr-1"></i> 节点数量: {{ store.nodes.length }}</p>
+                  <p class="mt-1"><i class="fas fa-link mr-1"></i> 连接数量: {{ store.connections.length }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" @click="cancelPublish">取消</button>
+              <button class="btn btn-primary" @click="confirmPublish" :disabled="!publishFormData.name">
+                <i class="fas fa-check mr-2"></i>
+                {{ isEditMode ? '确认更新' : '确认发布' }}
               </button>
             </div>
           </div>
@@ -749,7 +792,9 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { exportToPNG, exportToSVG, exportToJSON, importFromJSON } from '@/utils/exportUtils'
 import { validateFlow as validateFlowUtil } from '@/utils/flowValidator'
 import MiniMap from '@/components/MiniMap.vue'
-import { getCategories, getFormsByCategory } from '@/data/mockForms'
+import { getCategories, getFormsByCategory, getAllFormsIncludingCustom } from '@/data/mockForms'
+import { saveProcess, getProcessById } from '@/utils/processStorage'
+import { useRoute, useRouter } from 'vue-router'
 
 export default {
   name: 'Designer',
@@ -758,10 +803,21 @@ export default {
   },
   setup() {
     const store = useDesignerStore()
+    const route = useRoute()
+    const router = useRouter()
     
     // 本地UI状态
     const draggedNodeType = ref(null)
     const showFormPreview = ref(false)
+    const currentProcessId = ref(null)
+    const isEditMode = ref(false)
+    
+    // 发布对话框状态
+    const showPublishDialog = ref(false)
+    const publishFormData = ref({
+      name: '',
+      description: ''
+    })
     const draggingNode = ref(null)
     const isDragging = ref(false)
     const dragOffset = ref({ x: 0, y: 0 })
@@ -1603,6 +1659,81 @@ export default {
       showValidationDialog.value = true
     }
     
+    // 发布流程
+    const publishProcess = () => {
+      // 1. 先验证流程
+      const validation = validateFlowUtil(store.nodes, store.connections)
+      
+      if (!validation.valid) {
+        // 显示验证错误
+        validationResult.value = validation
+        showValidationDialog.value = true
+        return
+      }
+      
+      // 2. 准备发布数据
+      publishFormData.value = {
+        name: store.processConfig.name || '未命名流程',
+        description: store.processConfig.description || ''
+      }
+      
+      // 3. 显示发布确认对话框
+      showPublishDialog.value = true
+    }
+    
+    // 确认发布
+    const confirmPublish = () => {
+      try {
+        const processData = {
+          id: currentProcessId.value, // 如果是编辑模式，保留原 ID
+          name: publishFormData.value.name,
+          description: publishFormData.value.description,
+          status: 'published',
+          category: store.processConfig.category || '默认分类',
+          boundFormId: store.processConfig.boundFormId,
+          fieldMapping: store.processConfig.fieldMapping || {},
+          nodes: JSON.parse(JSON.stringify(store.nodes)),
+          connections: JSON.parse(JSON.stringify(store.connections)),
+          creator: '当前用户' // TODO: 从用户系统获取
+        }
+        
+        // 保存到 LocalStorage
+        const savedProcess = saveProcess(processData)
+        
+        // 关闭对话框
+        showPublishDialog.value = false
+        
+        // 显示成功提示
+        const message = document.createElement('div')
+        message.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2'
+        message.innerHTML = `<i class="fas fa-check-circle"></i> ${isEditMode.value ? '流程已更新' : '流程已发布'}`
+        document.body.appendChild(message)
+        
+        setTimeout(() => {
+          message.style.opacity = '0'
+          message.style.transition = 'opacity 0.3s'
+          setTimeout(() => {
+            message.remove()
+            // 导航到流程列表
+            router.push('/process-list')
+          }, 300)
+        }, 2000)
+        
+      } catch (error) {
+        alert('发布失败：' + error.message)
+      }
+    }
+    
+    // 取消发布
+    const cancelPublish = () => {
+      showPublishDialog.value = false
+    }
+    
+    // 计算发布按钮文本
+    const publishButtonText = computed(() => {
+      return isEditMode.value ? '更新流程' : '发布流程'
+    })
+    
     // 本地存储
     const STORAGE_KEY = 'workflow_designer_autosave'
     
@@ -1692,19 +1823,57 @@ export default {
       }
     }
     
+    // 加载流程（用于编辑）
+    const loadProcess = async (processId) => {
+      try {
+        const process = getProcessById(processId)
+        if (!process) {
+          alert('流程不存在')
+          return false
+        }
+        
+        // 加载流程数据
+        store.nodes = process.nodes || []
+        store.connections = process.connections || []
+        store.updateProcessConfig({
+          name: process.name,
+          description: process.description,
+          category: process.category,
+          boundFormId: process.boundFormId,
+          fieldMapping: process.fieldMapping || {}
+        })
+        
+        // 设置编辑模式
+        currentProcessId.value = processId
+        isEditMode.value = true
+        
+        return true
+      } catch (error) {
+        console.error('加载流程失败:', error)
+        alert('加载流程失败：' + error.message)
+        return false
+      }
+    }
+    
     // 生命周期
     onMounted(() => {
       document.addEventListener('keydown', onKeyDown)
       document.addEventListener('click', closeContextMenu)
       
-      // 尝试加载本地保存的数据
-      const localData = loadFromLocal()
-      if (localData && localData.nodes && localData.nodes.length > 0) {
-        if (confirm('检测到本地保存的流程数据，是否加载？')) {
-          store.nodes = localData.nodes
-          store.connections = localData.connections || []
-          if (localData.processConfig) {
-            store.updateProcessConfig(localData.processConfig)
+      // 检查是否是编辑模式（从路由获取 ID）
+      const processId = route.params.id
+      if (processId) {
+        loadProcess(processId)
+      } else {
+        // 尝试加载本地保存的数据
+        const localData = loadFromLocal()
+        if (localData && localData.nodes && localData.nodes.length > 0) {
+          if (confirm('检测到本地保存的流程数据，是否加载？')) {
+            store.nodes = localData.nodes
+            store.connections = localData.connections || []
+            if (localData.processConfig) {
+              store.updateProcessConfig(localData.processConfig)
+            }
           }
         }
       }
@@ -1756,6 +1925,10 @@ export default {
       showValidationDialog,
       validationResult,
       showFormPreview,
+      showPublishDialog,
+      publishFormData,
+      publishButtonText,
+      isEditMode,
       formCategories,
       getFormsByCategory,
       onDragStart,
@@ -1767,6 +1940,9 @@ export default {
       selectConnection,
       getConnectionColor,
       getConnectionWidth,
+      publishProcess,
+      confirmPublish,
+      cancelPublish,
       getConnectionMarker,
       onCanvasClick,
       onCanvasMouseDown,

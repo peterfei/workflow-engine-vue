@@ -25,9 +25,9 @@
         <i class="fas fa-drafting-compass"></i>
         流程设计器
       </router-link>
-      <router-link to="/form-designer" class="sidebar-nav-item" active-class="active">
-        <i class="fas fa-wpforms"></i>
-        表单设计器
+      <router-link to="/forms" class="sidebar-nav-item" active-class="active">
+        <i class="fas fa-clipboard-list"></i>
+        表单管理
       </router-link>
       <router-link to="/reports" class="sidebar-nav-item" active-class="active">
         <i class="fas fa-chart-bar"></i>

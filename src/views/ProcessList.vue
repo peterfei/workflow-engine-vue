@@ -200,7 +200,7 @@
                   <button class="btn btn-sm btn-secondary" @click="$router.push(`/process-detail/${process.id}`)">
                     <i class="fas fa-eye"></i>
                   </button>
-                  <button class="btn btn-sm btn-secondary" @click="$router.push('/designer')">
+                  <button class="btn btn-sm btn-secondary" @click="$router.push(`/designer/${process.id}`)">
                     <i class="fas fa-edit"></i>
                   </button>
                 </div>
@@ -291,6 +291,8 @@
 </template>
 
 <script>
+import { getAllProcesses } from '@/utils/processStorage'
+
 export default {
   name: 'ProcessList',
   data() {
@@ -304,7 +306,45 @@ export default {
       selectedProcesses: [],
       currentPage: 1,
       pageSize: 20,
-      processes: [
+      processes: []
+    }
+  },
+  mounted() {
+    this.loadProcesses()
+  },
+  methods: {
+    switchView(mode) {
+      this.viewMode = mode
+    },
+    handleSearch() {
+      this.currentPage = 1
+    },
+    handleSort() {
+      this.currentPage = 1
+    },
+    loadProcesses() {
+      this.loading = true
+      try {
+        const loadedProcesses = getAllProcesses()
+
+        // 如果没有流程，使用默认示例
+        if (loadedProcesses.length === 0) {
+          this.processes = this.getDefaultProcesses()
+        } else {
+          this.processes = loadedProcesses.map(p => ({
+            ...p,
+            creatorInitial: p.creator ? p.creator.charAt(0) : '未'
+          }))
+        }
+      } catch (error) {
+        console.error('加载流程列表失败:', error)
+        this.processes = this.getDefaultProcesses()
+      } finally {
+        this.loading = false
+      }
+    },
+    getDefaultProcesses() {
+      return [
         {
           id: 1,
           name: '订单处理流程',
@@ -347,16 +387,88 @@ export default {
           icon: 'fas fa-bell',
           iconBg: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'
         }
-      ],
-      quickFilters: [
-        { key: 'all', label: '全部', count: 24, icon: '' },
-        { key: 'active', label: '活跃', count: 18, icon: 'fas fa-check-circle text-green-500' },
-        { key: 'draft', label: '草稿', count: 4, icon: 'fas fa-edit text-yellow-500' },
-        { key: 'disabled', label: '停用', count: 2, icon: 'fas fa-ban text-gray-500' }
       ]
+    },
+    quickFilter(filterKey) {
+      this.activeFilter = filterKey
+      this.currentPage = 1
+    },
+    toggleAdvancedFilters() {
+      // TODO: 实现高级筛选
+      alert('高级筛选功能即将推出')
+    },
+    toggleSelectAll() {
+      if (this.selectAll) {
+        this.selectedProcesses = this.filteredProcesses.map(p => p.id)
+      } else {
+        this.selectedProcesses = []
+      }
+    },
+    bulkAction(action) {
+      alert(`批量操作: ${action} - 选择了 ${this.selectedProcesses.length} 个流程`)
+    },
+    clearSelection() {
+      this.selectedProcesses = []
+      this.selectAll = false
+    },
+    resetFilters() {
+      this.searchQuery = ''
+      this.activeFilter = 'all'
+      this.sortBy = 'updated'
+      this.currentPage = 1
+    },
+    sortByField(field) {
+      // 简单的排序切换逻辑
+      if (this.sortBy === field + '-asc') {
+        this.sortBy = field + '-desc'
+      } else {
+        this.sortBy = field + '-asc'
+      }
+    },
+    getStatusBadgeClass(status) {
+      switch (status) {
+        case 'active':
+          return 'badge-success'
+        case 'published':
+          return 'badge-info'
+        case 'draft':
+          return 'badge-warning'
+        case 'disabled':
+          return 'badge-danger'
+        default:
+          return 'badge-secondary'
+      }
+    },
+    getStatusText(status) {
+      switch (status) {
+        case 'active':
+          return '活跃'
+        case 'published':
+          return '已发布'
+        case 'draft':
+          return '草稿'
+        case 'disabled':
+          return '停用'
+        default:
+          return '未知'
+      }
+    },
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page
+      }
     }
   },
   computed: {
+    quickFilters() {
+      return [
+        { key: 'all', label: '全部', count: this.processes.length, icon: '' },
+        { key: 'active', label: '活跃', count: this.processes.filter(p => p.status === 'active').length, icon: 'fas fa-check-circle text-green-500' },
+        { key: 'published', label: '已发布', count: this.processes.filter(p => p.status === 'published').length, icon: 'fas fa-rocket text-blue-500' },
+        { key: 'draft', label: '草稿', count: this.processes.filter(p => p.status === 'draft').length, icon: 'fas fa-edit text-yellow-500' },
+        { key: 'disabled', label: '停用', count: this.processes.filter(p => p.status === 'disabled').length, icon: 'fas fa-ban text-gray-500' }
+      ]
+    },
     filteredProcesses() {
       let filtered = this.processes
 
@@ -418,82 +530,6 @@ export default {
   watch: {
     selectedProcesses() {
       this.selectAll = this.selectedProcesses.length === this.filteredProcesses.length && this.filteredProcesses.length > 0
-    }
-  },
-  methods: {
-    switchView(mode) {
-      this.viewMode = mode
-    },
-    handleSearch() {
-      this.currentPage = 1
-    },
-    handleSort() {
-      this.currentPage = 1
-    },
-    quickFilter(filterKey) {
-      this.activeFilter = filterKey
-      this.currentPage = 1
-    },
-    toggleAdvancedFilters() {
-      // TODO: 实现高级筛选
-      alert('高级筛选功能即将推出')
-    },
-    toggleSelectAll() {
-      if (this.selectAll) {
-        this.selectedProcesses = this.filteredProcesses.map(p => p.id)
-      } else {
-        this.selectedProcesses = []
-      }
-    },
-    bulkAction(action) {
-      alert(`批量操作: ${action} - 选择了 ${this.selectedProcesses.length} 个流程`)
-    },
-    clearSelection() {
-      this.selectedProcesses = []
-      this.selectAll = false
-    },
-    resetFilters() {
-      this.searchQuery = ''
-      this.activeFilter = 'all'
-      this.sortBy = 'updated'
-      this.currentPage = 1
-    },
-    sortByField(field) {
-      // 简单的排序切换逻辑
-      if (this.sortBy === field + '-asc') {
-        this.sortBy = field + '-desc'
-      } else {
-        this.sortBy = field + '-asc'
-      }
-    },
-    getStatusBadgeClass(status) {
-      switch (status) {
-        case 'active':
-          return 'badge-success'
-        case 'draft':
-          return 'badge-warning'
-        case 'disabled':
-          return 'badge-danger'
-        default:
-          return 'badge-secondary'
-      }
-    },
-    getStatusText(status) {
-      switch (status) {
-        case 'active':
-          return '活跃'
-        case 'draft':
-          return '草稿'
-        case 'disabled':
-          return '停用'
-        default:
-          return '未知'
-      }
-    },
-    goToPage(page) {
-      if (page >= 1 && page <= this.totalPages) {
-        this.currentPage = page
-      }
     }
   }
 }

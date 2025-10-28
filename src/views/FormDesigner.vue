@@ -1,24 +1,36 @@
 <template>
-  <div>
+  <div class="min-h-screen bg-gray-50">
     <!-- 页面头部 -->
     <header class="page-header">
       <div class="flex items-center justify-between w-full">
         <div>
-          <h1 class="page-title">表单设计器</h1>
-          <p class="page-subtitle">创建和编辑业务表单</p>
+          <h1 class="page-title">{{ formId ? '编辑表单' : '创建表单' }}</h1>
+          <p class="page-subtitle">{{ formId ? '修改现有表单' : '创建新的业务表单' }}</p>
         </div>
         <div class="flex items-center gap-3">
-          <button class="btn btn-secondary" @click="$router.go(-1)">
-            <i class="fas fa-arrow-left"></i>
-            返回
+          <button class="btn btn-secondary" @click="loadTemplates">
+            <i class="fas fa-folder-open mr-1"></i>
+            加载模板
           </button>
-          <button class="btn btn-secondary">
-            <i class="fas fa-save"></i>
+          <button class="btn btn-primary" @click="saveForm">
+            <i class="fas fa-save mr-1"></i>
             保存
           </button>
-          <button class="btn btn-primary">
-            <i class="fas fa-eye"></i>
+          <button class="btn btn-secondary" @click="exportForm">
+            <i class="fas fa-download mr-1"></i>
+            导出
+          </button>
+          <button class="btn btn-secondary" @click="importForm">
+            <i class="fas fa-upload mr-1"></i>
+            导入
+          </button>
+          <button class="btn btn-secondary" @click="previewForm">
+            <i class="fas fa-eye mr-1"></i>
             预览
+          </button>
+          <button class="btn btn-secondary" @click="router.push('/forms')">
+            <i class="fas fa-arrow-left mr-1"></i>
+            返回列表
           </button>
         </div>
       </div>
@@ -28,40 +40,45 @@
     <main class="p-6">
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- 左侧工具栏 -->
-        <div class="lg:col-span-1">
+        <div class="lg:col-span-1 space-y-4">
+          <!-- 布局选择 -->
           <div class="card p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">
+              <i class="fas fa-th text-blue-500 mr-2"></i>
+              布局模式
+            </h3>
+            <div class="grid grid-cols-2 gap-2">
+              <button 
+                v-for="layout in layoutModes" 
+                :key="layout.value"
+                @click="selectLayout(layout.value)"
+                :class="[
+                  'flex items-center justify-center gap-2 px-3 py-2 rounded-lg border-2 transition-all',
+                  currentLayout === layout.value 
+                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                    : 'border-gray-200 hover:border-blue-300'
+                ]">
+                <i :class="layout.icon"></i>
+                <span class="text-sm">{{ layout.label }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 表单组件 -->
+          <div class="card p-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">
               <i class="fas fa-wpforms text-blue-500 mr-2"></i>
               表单组件
             </h3>
             <div class="space-y-2">
-              <div class="component-item" draggable="true">
-                <i class="fas fa-font"></i>
-                <span>单行文本</span>
-              </div>
-              <div class="component-item" draggable="true">
-                <i class="fas fa-align-left"></i>
-                <span>多行文本</span>
-              </div>
-              <div class="component-item" draggable="true">
-                <i class="fas fa-list"></i>
-                <span>下拉选择</span>
-              </div>
-              <div class="component-item" draggable="true">
-                <i class="fas fa-dot-circle"></i>
-                <span>单选框</span>
-              </div>
-              <div class="component-item" draggable="true">
-                <i class="fas fa-check-square"></i>
-                <span>复选框</span>
-              </div>
-              <div class="component-item" draggable="true">
-                <i class="fas fa-calendar"></i>
-                <span>日期选择</span>
-              </div>
-              <div class="component-item" draggable="true">
-                <i class="fas fa-upload"></i>
-                <span>文件上传</span>
+              <div 
+                v-for="comp in components" 
+                :key="comp.type"
+                class="component-item"
+                draggable="true"
+                @dragstart="onDragStart($event, comp.type)">
+                <i :class="comp.icon"></i>
+                <span>{{ comp.label }}</span>
               </div>
             </div>
           </div>
@@ -70,8 +87,9 @@
         <!-- 中间表单画布 -->
         <div class="lg:col-span-2">
           <div class="card p-6">
-            <div class="form-canvas">
-              <div class="form-header">
+            <div class="form-canvas" @drop="onDrop" @dragover.prevent>
+              <!-- 表单头部 -->
+              <div class="form-header mb-6">
                 <input
                   type="text"
                   class="form-title-input"
@@ -82,32 +100,43 @@
                   class="form-description-input"
                   placeholder="表单描述"
                   v-model="formDescription"
+                  rows="2"
                 ></textarea>
               </div>
 
-              <div class="form-fields">
-                <div class="form-field" v-for="(field, index) in formFields" :key="index">
+              <!-- 表单字段 -->
+              <div class="form-fields" :class="layoutClass">
+                <div 
+                  v-for="(field, index) in formFields" 
+                  :key="field.id"
+                  class="form-field"
+                  @click="selectField(field)"
+                  :class="{ 'selected': selectedField?.id === field.id }">
                   <div class="field-header">
-                    <span class="field-label">{{ field.label }}</span>
+                    <span class="field-label">
+                      {{ field.label }}
+                      <span v-if="field.required" class="text-red-500 ml-1">*</span>
+                    </span>
                     <div class="field-actions">
-                      <button class="field-action-btn">
+                      <button 
+                        class="field-action-btn"
+                        @click.stop="editField(field)">
                         <i class="fas fa-edit"></i>
                       </button>
-                      <button class="field-action-btn">
+                      <button 
+                        class="field-action-btn"
+                        @click.stop="deleteField(field.id)">
                         <i class="fas fa-trash"></i>
                       </button>
                     </div>
                   </div>
                   <div class="field-input">
-                    <component :is="getFieldComponent(field.type)" :field="field" />
-                  </div>
-                  <div class="field-settings">
-                    <span class="setting-item">必填</span>
-                    <span class="setting-item">验证</span>
+                    <component :is="getFieldComponent(field)" :field="field" />
                   </div>
                 </div>
 
-                <div class="add-field-btn">
+                <!-- 添加字段按钮 -->
+                <div class="add-field-btn" @click="showAddField = true">
                   <i class="fas fa-plus"></i>
                   添加字段
                 </div>
@@ -119,118 +148,440 @@
         <!-- 右侧属性面板 -->
         <div class="lg:col-span-1">
           <div class="card p-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">
               <i class="fas fa-cog text-blue-500 mr-2"></i>
               字段属性
             </h3>
-            <div class="space-y-4">
+            <div v-if="selectedField" class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">字段标签</label>
-                <input type="text" class="form-input" value="订单金额">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">字段类型</label>
-                <select class="form-select">
-                  <option>单行文本</option>
-                  <option>多行文本</option>
-                  <option>数字</option>
-                  <option>日期</option>
-                </select>
+                <input 
+                  type="text" 
+                  class="form-input"
+                  v-model="selectedField.label">
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">占位符</label>
-                <input type="text" class="form-input" value="请输入订单金额">
+                <input 
+                  type="text" 
+                  class="form-input"
+                  v-model="selectedField.placeholder">
               </div>
               <div class="flex items-center">
-                <input type="checkbox" class="form-checkbox mr-2" checked>
+                <input 
+                  type="checkbox" 
+                  class="form-checkbox mr-2"
+                  v-model="selectedField.required">
                 <label class="text-sm text-gray-700">必填字段</label>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">验证规则</label>
-                <select class="form-select">
-                  <option>无</option>
-                  <option>邮箱格式</option>
-                  <option>手机号格式</option>
-                  <option>数字范围</option>
-                </select>
-              </div>
+            </div>
+            <div v-else class="text-center text-gray-500 py-8">
+              <i class="fas fa-mouse-pointer text-4xl mb-2"></i>
+              <p>请选择字段进行编辑</p>
             </div>
           </div>
         </div>
       </div>
     </main>
+
+    <!-- 模板选择模态框 -->
+    <Modal v-model="showTemplateModal">
+      <template #title>选择表单模板</template>
+      <template #content>
+        <div class="space-y-4">
+          <div v-for="category in categories" :key="category" class="border-b pb-4 last:border-0">
+            <h4 class="font-semibold text-gray-800 mb-3">{{ category }}</h4>
+            <div class="grid grid-cols-1 gap-2">
+              <button
+                v-for="form in getFormsByCategory(category)"
+                :key="form.id"
+                @click="loadTemplate(form)"
+                class="text-left px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all">
+                <div class="font-medium text-gray-900">{{ form.name }}</div>
+                <div class="text-sm text-gray-500 mt-1">{{ form.description }}</div>
+                <div class="text-xs text-gray-400 mt-1">{{ form.fields.length }} 个字段</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </Modal>
+
+    <!-- 预览模态框 -->
+    <Modal v-model="showPreviewModal" size="large">
+      <template #title>表单预览</template>
+      <template #content>
+        <div class="form-preview">
+          <h2 class="text-2xl font-bold mb-2">{{ formTitle || '表单标题' }}</h2>
+          <p class="text-gray-600 mb-6">{{ formDescription || '表单描述' }}</p>
+          <div class="space-y-4" :class="layoutClass">
+            <div v-for="(field, index) in formFields" :key="index" class="form-group">
+              <label class="block text-sm font-medium mb-2">
+                {{ field.label }}
+                <span v-if="field.required" class="text-red-500">*</span>
+              </label>
+              <component :is="getFieldComponent(field)" />
+            </div>
+          </div>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'FormDesigner',
-  data() {
-    return {
-      formTitle: '订单申请表单',
-      formDescription: '请填写订单相关信息',
-      formFields: [
-        {
-          label: '订单名称',
-          type: 'text',
-          required: true,
-          placeholder: '请输入订单名称'
-        },
-        {
-          label: '订单金额',
-          type: 'number',
-          required: true,
-          placeholder: '请输入订单金额'
-        },
-        {
-          label: '订单类型',
-          type: 'select',
-          required: true,
-          options: ['普通订单', '紧急订单', 'VIP订单']
-        },
-        {
-          label: '备注信息',
-          type: 'textarea',
-          required: false,
-          placeholder: '请输入备注信息'
-        }
-      ]
-    }
-  },
-  methods: {
-    getFieldComponent(type) {
-      const components = {
-        text: 'FormText',
-        number: 'FormNumber',
-        select: 'FormSelect',
-        textarea: 'FormTextarea'
-      }
-      return components[type] || 'FormText'
-    }
-  },
-  components: {
-    FormText: {
-      template: '<input type="text" :placeholder="field.placeholder" class="form-input">',
-      props: ['field']
-    },
-    FormNumber: {
-      template: '<input type="number" :placeholder="field.placeholder" class="form-input">',
-      props: ['field']
-    },
-    FormSelect: {
-      template: `
-        <select class="form-select">
-          <option v-for="option in field.options" :key="option" :value="option">{{ option }}</option>
-        </select>
-      `,
-      props: ['field']
-    },
-    FormTextarea: {
-      template: '<textarea :placeholder="field.placeholder" class="form-textarea" rows="3"></textarea>',
-      props: ['field']
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getAllForms, saveCustomForm, getAllFormsIncludingCustom, getFormByIdIncludingCustom } from '@/data/mockForms'
+import Modal from '@/components/common/Modal.vue'
+
+const route = useRoute()
+const router = useRouter()
+
+// 表单数据
+const formId = ref(route.params.id || null)
+const formTitle = ref('')
+const formDescription = ref('')
+const formFields = ref([])
+const selectedField = ref(null)
+const showTemplateModal = ref(false)
+const showPreviewModal = ref(false)
+let fieldIdCounter = 0
+
+// 布局配置
+const currentLayout = ref('single')
+const layoutModes = [
+  { value: 'single', label: '单列', icon: 'fas fa-align-left' },
+  { value: 'double', label: '双列', icon: 'fas fa-columns' },
+  { value: 'triple', label: '三列', icon: 'fas fa-th' },
+  { value: 'mixed', label: '混合', icon: 'fas fa-th-large' }
+]
+
+const layoutClass = computed(() => {
+  return {
+    'single-column': currentLayout.value === 'single',
+    'double-column': currentLayout.value === 'double',
+    'triple-column': currentLayout.value === 'triple',
+    'mixed-layout': currentLayout.value === 'mixed'
+  }
+})
+
+// 组件列表
+const components = [
+  { type: 'text', label: '单行文本', icon: 'fas fa-font' },
+  { type: 'textarea', label: '多行文本', icon: 'fas fa-align-left' },
+  { type: 'number', label: '数字', icon: 'fas fa-hashtag' },
+  { type: 'date', label: '日期', icon: 'fas fa-calendar' },
+  { type: 'select', label: '下拉选择', icon: 'fas fa-list' },
+  { type: 'radio', label: '单选框', icon: 'fas fa-dot-circle' },
+  { type: 'checkbox', label: '复选框', icon: 'fas fa-check-square' }
+]
+
+// 表单分类
+const allForms = ref([])
+const categories = computed(() => {
+  const cats = new Set(allForms.value.map(f => f.category))
+  return Array.from(cats)
+})
+
+// 方法
+const selectLayout = (layout) => {
+  currentLayout.value = layout
+}
+
+const getFormsByCategory = (category) => {
+  return allForms.value.filter(f => f.category === category)
+}
+
+const loadTemplates = () => {
+  showTemplateModal.value = true
+}
+
+const loadTemplate = (form) => {
+  formTitle.value = form.name
+  formDescription.value = form.description
+  
+  // 将模板字段转换为表单字段，使用 field.name 作为 label
+  formFields.value = form.fields.map(field => ({
+    id: `field_${++fieldIdCounter}`,
+    label: field.name, // 使用 name 作为标签
+    type: field.type,
+    required: field.required || false,
+    placeholder: `请输入${field.name}`,
+    options: field.options || [],
+    validation: field.validation || {}
+  }))
+  
+  showTemplateModal.value = false
+  
+  // 显示加载成功提示
+  const message = document.createElement('div')
+  message.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2'
+  message.innerHTML = `<i class="fas fa-check-circle"></i> 已加载模板：${form.name}`
+  document.body.appendChild(message)
+  
+  setTimeout(() => {
+    message.style.opacity = '0'
+    message.style.transition = 'opacity 0.3s'
+    setTimeout(() => message.remove(), 300)
+  }, 2000)
+}
+
+const selectField = (field) => {
+  selectedField.value = field
+}
+
+const editField = (field) => {
+  selectedField.value = field
+}
+
+const deleteField = (id) => {
+  const index = formFields.value.findIndex(f => f.id === id)
+  if (index > -1) {
+    formFields.value.splice(index, 1)
+  }
+  if (selectedField.value?.id === id) {
+    selectedField.value = null
+  }
+}
+
+const getFieldComponent = (field) => {
+  const componentMap = {
+    text: 'input',
+    textarea: 'textarea',
+    number: 'input',
+    date: 'input',
+    datetime: 'input',
+    select: 'select',
+    radio: 'select',
+    checkbox: 'checkbox',
+    boolean: 'input'
+  }
+  return componentMap[field.type] || 'input'
+}
+
+const onDragStart = (event, type) => {
+  event.dataTransfer.setData('fieldType', type)
+}
+
+const onDrop = (event) => {
+  const fieldType = event.dataTransfer.getData('fieldType')
+  if (fieldType) {
+    const comp = components.find(c => c.type === fieldType)
+    if (comp) {
+      addField(comp)
     }
   }
 }
+
+const addField = (comp) => {
+  const field = {
+    id: `field_${++fieldIdCounter}`,
+    label: comp.label,
+    type: comp.type,
+    required: false,
+    placeholder: `请输入${comp.label}`
+  }
+  formFields.value.push(field)
+}
+
+const previewForm = () => {
+  showPreviewModal.value = true
+}
+
+const exportForm = () => {
+  const data = {
+    title: formTitle.value,
+    description: formDescription.value,
+    layout: currentLayout.value,
+    fields: formFields.value
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${formTitle.value || 'form'}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+const importForm = () => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result)
+          formTitle.value = data.title
+          formDescription.value = data.description
+          currentLayout.value = data.layout
+          formFields.value = data.fields
+        } catch (error) {
+          alert('文件格式错误')
+        }
+      }
+      reader.readAsText(file)
+    }
+  }
+  input.click()
+}
+
+// 保存和加载功能
+const saveForm = () => {
+  // 验证表单
+  if (!formTitle.value) {
+    alert('请输入表单标题')
+    return
+  }
+  
+  if (formFields.value.length === 0) {
+    alert('请至少添加一个字段')
+    return
+  }
+  
+  const data = {
+    title: formTitle.value,
+    description: formDescription.value,
+    layout: currentLayout.value,
+    fields: formFields.value,
+    savedAt: new Date().toISOString()
+  }
+  
+  try {
+    localStorage.setItem('formDesigner_currentForm', JSON.stringify(data))
+    
+    // 也保存为自定义表单（供流程设计器使用）
+    if (formTitle.value && formFields.value.length > 0) {
+      // 如果是编辑模式，使用现有 ID；否则生成新 ID
+      const saveFormId = formId.value || `custom-${Date.now()}`
+      
+      const customForm = {
+        id: saveFormId,
+        name: formTitle.value,
+        description: formDescription.value,
+        category: '自定义表单',
+        fields: formFields.value.map(f => ({
+          name: f.label,
+          type: f.type,
+          required: f.required || false,
+          options: f.options || [],
+          validation: f.validation || {}
+        }))
+      }
+      saveCustomForm(customForm)
+      
+      // 如果是新建模式，更新 formId
+      if (!formId.value) {
+        formId.value = saveFormId
+      }
+    }
+    
+    // 显示保存成功提示
+    const message = document.createElement('div')
+    message.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2'
+    message.innerHTML = '<i class="fas fa-check-circle"></i> 表单已保存'
+    document.body.appendChild(message)
+    
+    setTimeout(() => {
+      message.style.opacity = '0'
+      message.style.transition = 'opacity 0.3s'
+      setTimeout(() => message.remove(), 300)
+    }, 2000)
+  } catch (error) {
+    alert('保存失败，请检查浏览器设置')
+  }
+}
+
+const loadSavedForm = () => {
+  try {
+    const saved = localStorage.getItem('formDesigner_currentForm')
+    if (saved) {
+      const data = JSON.parse(saved)
+      formTitle.value = data.title || ''
+      formDescription.value = data.description || ''
+      currentLayout.value = data.layout || 'single'
+      formFields.value = data.fields || []
+      
+      // 恢复 fieldIdCounter
+      if (formFields.value.length > 0) {
+        const maxId = Math.max(...formFields.value.map(f => {
+          const match = f.id?.match(/_(\d+)$/)
+          return match ? parseInt(match[1]) : 0
+        }))
+        fieldIdCounter = maxId
+      }
+      
+      // 显示加载提示
+      const message = document.createElement('div')
+      message.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2'
+      message.innerHTML = '<i class="fas fa-check-circle"></i> 已加载保存的表单'
+      document.body.appendChild(message)
+      
+      setTimeout(() => {
+        message.style.opacity = '0'
+        message.style.transition = 'opacity 0.3s'
+        setTimeout(() => message.remove(), 300)
+      }, 2000)
+    }
+  } catch (error) {
+    console.error('加载失败:', error)
+  }
+}
+
+// 自动保存（每30秒）
+let autoSaveTimer = null
+const startAutoSave = () => {
+  if (autoSaveTimer) clearInterval(autoSaveTimer)
+  autoSaveTimer = setInterval(() => {
+    if (formFields.value.length > 0 || formTitle.value) {
+      saveForm()
+    }
+  }, 30000) // 30秒自动保存
+}
+
+// 加载表单（用于编辑模式）
+const loadFormById = () => {
+  if (formId.value) {
+    const form = getFormByIdIncludingCustom(formId.value)
+    if (form) {
+      formTitle.value = form.name
+      formDescription.value = form.description
+      
+      // 将表单字段转换为设计器字段
+      formFields.value = form.fields.map(field => ({
+        id: `field_${++fieldIdCounter}`,
+        label: field.name,
+        type: field.type,
+        required: field.required || false,
+        placeholder: `请输入${field.name}`,
+        options: field.options || [],
+        validation: field.validation || {}
+      }))
+      
+      return true
+    }
+  }
+  return false
+}
+
+// 生命周期
+onMounted(() => {
+  allForms.value = getAllForms()
+  
+  // 如果是编辑模式，加载指定表单
+  if (formId.value) {
+    loadFormById()
+  } else {
+    // 如果是新建模式，尝试加载上次未保存的表单
+    loadSavedForm()
+  }
+  
+  startAutoSave()
+})
 </script>
 
 <style scoped>
@@ -298,16 +649,44 @@ export default {
 
 .form-field {
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 2px solid #e5e7eb;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .form-field:hover {
+  border-color: #93c5fd;
+}
+
+.form-field.selected {
   border-color: #3b82f6;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 布局样式 */
+.single-column .form-field {
+  width: 100%;
+}
+
+.double-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.triple-column {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.mixed-layout {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
 
 .field-header {
@@ -346,19 +725,6 @@ export default {
   margin-bottom: 8px;
 }
 
-.field-settings {
-  display: flex;
-  gap: 8px;
-}
-
-.setting-item {
-  font-size: 12px;
-  color: #9ca3af;
-  background: #f3f4f6;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
 .add-field-btn {
   display: flex;
   align-items: center;
@@ -370,12 +736,19 @@ export default {
   color: #9ca3af;
   cursor: pointer;
   transition: all 0.2s;
-  margin-top: 16px;
 }
 
 .add-field-btn:hover {
   border-color: #3b82f6;
   color: #3b82f6;
   background: rgba(59, 130, 246, 0.05);
+}
+
+.form-preview {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
 }
 </style>

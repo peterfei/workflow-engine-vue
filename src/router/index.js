@@ -4,6 +4,7 @@ import ProcessList from '@/views/ProcessList.vue'
 import ProcessDetail from '@/views/ProcessDetail.vue'
 import ProcessInstanceDetail from '@/views/ProcessInstanceDetail.vue'
 import Designer from '@/views/Designer.vue'
+import FormList from '@/views/FormList.vue'
 import FormDesigner from '@/views/FormDesigner.vue'
 import Reports from '@/views/Reports.vue'
 import Users from '@/views/Users.vue'
@@ -45,10 +46,30 @@ const routes = [
     meta: { title: '流程设计器 - 流程引擎平台' }
   },
   {
-    path: '/form-designer',
-    name: 'FormDesigner',
+    path: '/designer/:id',
+    name: 'DesignerEdit',
+    component: Designer,
+    props: true,
+    meta: { title: '编辑流程 - 流程引擎平台' }
+  },
+  {
+    path: '/forms',
+    name: 'FormList',
+    component: FormList,
+    meta: { title: '表单管理 - 流程引擎平台' }
+  },
+  {
+    path: '/forms/new',
+    name: 'FormDesignerNew',
     component: FormDesigner,
-    meta: { title: '表单设计器 - 流程引擎平台' }
+    meta: { title: '创建表单 - 流程引擎平台' }
+  },
+  {
+    path: '/forms/edit/:id',
+    name: 'FormDesignerEdit',
+    component: FormDesigner,
+    props: true,
+    meta: { title: '编辑表单 - 流程引擎平台' }
   },
   {
     path: '/reports',

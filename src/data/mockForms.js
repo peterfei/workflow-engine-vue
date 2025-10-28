@@ -322,12 +322,16 @@ export const getAllForms = () => mockForms
 // 根据ID获取表单
 export const getFormById = (id) => mockForms.find(form => form.id === id)
 
-// 根据分类获取表单
-export const getFormsByCategory = (category) => mockForms.filter(form => form.category === category)
+// 根据分类获取表单（包括自定义表单）
+export const getFormsByCategory = (category) => {
+  const allForms = getAllFormsIncludingCustom()
+  return allForms.filter(form => form.category === category)
+}
 
-// 获取所有分类
+// 获取所有分类（包括自定义表单）
 export const getCategories = () => {
-  const categories = [...new Set(mockForms.map(form => form.category))]
+  const allForms = getAllFormsIncludingCustom()
+  const categories = [...new Set(allForms.map(form => form.category))]
   return categories
 }
 
@@ -338,6 +342,60 @@ export const searchForms = (keyword) => {
     form.name.toLowerCase().includes(lowerKeyword) ||
     form.description.toLowerCase().includes(lowerKeyword)
   )
+}
+
+// 从 LocalStorage 加载自定义表单
+export const getCustomForms = () => {
+  try {
+    const saved = localStorage.getItem('formDesigner_customForms')
+    if (saved) {
+      return JSON.parse(saved)
+    }
+  } catch (error) {
+    console.error('加载自定义表单失败:', error)
+  }
+  return []
+}
+
+// 保存自定义表单
+export const saveCustomForm = (form) => {
+  const customForms = getCustomForms()
+  
+  // 首先尝试按 ID 查找（用于更新现有表单）
+  let existingIndex = customForms.findIndex(f => f.id === form.id)
+  
+  // 如果按 ID 没找到，尝试按名称查找（防止重复名称）
+  if (existingIndex === -1) {
+    existingIndex = customForms.findIndex(f => f.name === form.name && f.category === form.category)
+  }
+  
+  if (existingIndex >= 0) {
+    // 更新现有表单，保留原 ID
+    customForms[existingIndex] = {
+      ...form,
+      id: customForms[existingIndex].id // 保留原 ID
+    }
+  } else {
+    // 新增表单
+    customForms.push(form)
+  }
+  
+  localStorage.setItem('formDesigner_customForms', JSON.stringify(customForms))
+}
+
+// 获取所有表单（包括自定义表单）
+export const getAllFormsIncludingCustom = () => {
+  const customForms = getCustomForms()
+  return [...mockForms, ...customForms]
+}
+
+// 根据ID获取表单（包括自定义表单）
+export const getFormByIdIncludingCustom = (id) => {
+  const form = mockForms.find(f => f.id === id)
+  if (form) return form
+  
+  const customForms = getCustomForms()
+  return customForms.find(f => f.id === id)
 }
 
 export default mockForms
