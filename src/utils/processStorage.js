@@ -58,41 +58,62 @@ export function saveProcess(processData) {
     const existingIndex = processes.findIndex(p => p.id === processData.id)
     
     const now = new Date().toISOString()
-    const processToSave = {
-      id: processData.id || generateProcessId(),
-      name: processData.name || '未命名流程',
-      description: processData.description || '',
-      status: processData.status || 'published',
-      category: processData.category || '默认分类',
-      boundFormId: processData.boundFormId || null,
-      fieldMapping: processData.fieldMapping || {},
-      nodes: processData.nodes || [],
-      connections: processData.connections || [],
-      creator: processData.creator || '当前用户',
-      createdAt: processData.createdAt || now,
-      updatedAt: now,
-      version: processData.version || 'v1.0',
-      icon: processData.icon || getCategoryIcon(processData.category),
-      iconBg: processData.iconBg || getIconGradient(processData.category),
-      instanceCount: processData.instanceCount || 0,
-      completedCount: processData.completedCount || 0,
-      runningCount: processData.runningCount || 0
-    }
-    
+    let savedProcess
+
     if (existingIndex >= 0) {
-      // 更新现有流程
-      processes[existingIndex] = processToSave
-      // 保留创建时间和版本递增
-      const oldVersion = processes[existingIndex].version
-      const versionNum = parseFloat(oldVersion.replace('v', '')) || 1.0
-      processToSave.version = `v${(versionNum + 0.1).toFixed(1)}`
+      // 更新现有流程：保留 createdAt，正确递增版本号，保证分类与图标一致
+      const existing = processes[existingIndex]
+      const previousVersion = existing.version || 'v1.0'
+      const versionNum = parseFloat(String(previousVersion).replace('v', '')) || 1.0
+      const nextVersion = `v${(versionNum + 0.1).toFixed(1)}`
+
+      const category = (processData.category != null ? processData.category : existing.category) || 'default'
+      const icon = processData.icon || existing.icon || getCategoryIcon(category)
+      const iconBg = processData.iconBg || existing.iconBg || getIconGradient(category)
+
+      const updated = {
+        ...existing,
+        ...processData,
+        id: existing.id,
+        createdAt: existing.createdAt,
+        updatedAt: now,
+        version: nextVersion,
+        category,
+        icon,
+        iconBg
+      }
+
+      processes[existingIndex] = updated
+      savedProcess = updated
     } else {
-      // 新增流程
-      processes.push(processToSave)
+      // 新增流程：初始化默认值，生成ID与版本
+      const category = processData.category || 'default'
+      const created = {
+        id: processData.id || generateProcessId(),
+        name: processData.name || '未命名流程',
+        description: processData.description || '',
+        status: processData.status || 'published',
+        category,
+        boundFormId: processData.boundFormId || null,
+        fieldMapping: processData.fieldMapping || {},
+        nodes: processData.nodes || [],
+        connections: processData.connections || [],
+        creator: processData.creator || '当前用户',
+        createdAt: now,
+        updatedAt: now,
+        version: 'v1.0',
+        icon: processData.icon || getCategoryIcon(category),
+        iconBg: processData.iconBg || getIconGradient(category),
+        instanceCount: processData.instanceCount || 0,
+        completedCount: processData.completedCount || 0,
+        runningCount: processData.runningCount || 0
+      }
+      processes.push(created)
+      savedProcess = created
     }
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(processes))
-    return processToSave
+    return savedProcess
   } catch (error) {
     console.error('保存流程失败:', error)
     throw new Error('保存流程失败，请检查浏览器存储设置')
@@ -212,5 +233,6 @@ export function clearAllProcesses() {
     return false
   }
 }
+
 
 

@@ -4,7 +4,7 @@
     @click="toggleAIAssistant"
     title="AI 助手 (Ctrl+K)"
   >
-    <i class="fas fa-robot"></i>
+    <span class="ai-text">AI</span>
   </button>
 </template>
 
@@ -22,4 +22,9 @@ export default {
 
 <style scoped>
 /* AI 助手按钮样式已在全局 CSS 中定义 */
+.ai-text {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
 </style>
