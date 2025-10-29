@@ -1,3 +1,10 @@
+/*
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+*/
+
 /**
  * 流程存储工具 - LocalStorage 管理
  * 用于保存和加载已发布的流程

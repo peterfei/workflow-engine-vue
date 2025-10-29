@@ -99,4 +99,4 @@ PRs welcome! If you plan a larger change, please open an issue to discuss first.
 
 ## License
 
-MIT © 2025 peterfei
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

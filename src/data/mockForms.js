@@ -1,3 +1,10 @@
+/*
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+*/
+
 /**
  * 企业级表单模拟数据
  * 包含20个预定义的业务流程表单

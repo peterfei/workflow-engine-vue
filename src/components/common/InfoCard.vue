@@ -1,3 +1,10 @@
+<!--
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+-->
+
 <template>
   <div class="info-card">
     <div class="flex items-center gap-4 mb-3">

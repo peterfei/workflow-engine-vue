@@ -1,3 +1,10 @@
+<!--
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+-->
+
 <template>
   <div class="sidebar" :class="{ open: isMobileMenuOpen }">
     <div class="sidebar-header">

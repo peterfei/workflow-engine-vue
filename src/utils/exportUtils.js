@@ -1,3 +1,10 @@
+/*
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+*/
+
 /**
  * 导出工具函数
  * 支持导出为 PNG、SVG 和 JSON 格式

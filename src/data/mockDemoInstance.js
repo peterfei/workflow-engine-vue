@@ -1,3 +1,10 @@
+/*
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+*/
+
 // Demo approval instance: 我的审核 -> 总经理审核 -> 结束
 
 const STORAGE_KEY = 'demo_p_9001_state'

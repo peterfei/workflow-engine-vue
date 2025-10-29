@@ -1,3 +1,10 @@
+<!--
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+-->
+
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- 页面头部 -->

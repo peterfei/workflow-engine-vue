@@ -1,3 +1,10 @@
+/*
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+*/
+
 /**
  * 流程验证工具
  * 检测流程设计中的错误和问题

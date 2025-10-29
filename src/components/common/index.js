@@ -1,3 +1,10 @@
+/*
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+*/
+
 // 公共组件导出索引
 export { default as StatCard } from './StatCard.vue'
 export { default as InfoCard } from './InfoCard.vue'

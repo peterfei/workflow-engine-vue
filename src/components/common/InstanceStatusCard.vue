@@ -1,3 +1,10 @@
+<!--
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+-->
+
 <template>
   <div class="instance-status-card" :class="statusClass">
     <div class="status-main">

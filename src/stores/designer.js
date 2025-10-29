@@ -1,3 +1,10 @@
+/*
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+*/
+
 import { defineStore } from 'pinia'
 import { getAllFormsIncludingCustom, getFormByIdIncludingCustom } from '@/data/mockForms'
 

@@ -1,3 +1,10 @@
+<!--
+  Workflow Engine Vue
+  Copyright (c) 2025 peterfei
+  Email: peterfeispace@gmail.com
+  GitHub: https://github.com/peterfei/workflow-engine-vue
+-->
+
 <template>
   <div class="metric-item">
     <div class="flex items-center justify-between mb-3">
