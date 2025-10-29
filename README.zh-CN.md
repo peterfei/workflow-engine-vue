@@ -1,13 +1,10 @@
+# 流程引擎Vue版 
+
+面向生产的现代化流程引擎前端，基于 Vue 3 + Pinia + Tailwind。可视化设计流程、管理表单、跟踪实例、分析性能，一套全覆盖解决方案。 [English](README.md)
+
+
+
 <div align="center">
-
-# 流程引擎Vue版
-
-面向生产的现代化流程引擎前端，基于 Vue 3 + Pinia + Tailwind。可视化设计流程、管理表单、跟踪实例、分析性能，一套全覆盖解决方案。
-
-[English](README.md)
-
-
-
 <p align="center">
   <a href="https://github.com/peterfei/workflow-engine-vue/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/peterfei/workflow-engine-vue?style=for-the-badge&logo=github"/></a>
   <a href="https://github.com/peterfei/workflow-engine-vue/network/members"><img alt="GitHub Forks" src="https://img.shields.io/github/forks/peterfei/workflow-engine-vue?style=for-the-badge&logo=github"/></a>
@@ -17,10 +14,9 @@
   <img alt="Vite" src="https://img.shields.io/badge/Vite-4.x-646cff?style=for-the-badge&logo=vite&logoColor=white"/>
   <img alt="Pinia" src="https://img.shields.io/badge/Pinia-3.x-facc15?style=for-the-badge"/>
 </p>
+</div>
 
 ![Dashboard](Thumbs/dashboard.png)
-
-
 
 ## 为什么是它
 

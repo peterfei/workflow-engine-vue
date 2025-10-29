@@ -1,13 +1,10 @@
+
+# Workflow Engine Vue 
+
+Production‑ready, modern workflow UX built with Vue 3 + Pinia + Tailwind. Design processes visually, manage forms, track instances, and analyze performance — all in one beautiful, responsive UI. [简体中文](README.zh-CN.md)
+
 <div align="center">
-
-# Workflow Engine Vue
-
-Production‑ready, modern workflow UX built with Vue 3 + Pinia + Tailwind. Design processes visually, manage forms, track instances, and analyze performance — all in one beautiful, responsive UI.
-
-[简体中文](README.zh-CN.md)
-
 <br/>
-
 <p align="center">
   <a href="https://github.com/peterfei/workflow-engine-vue/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/peterfei/workflow-engine-vue?style=for-the-badge&logo=github"/></a>
   <a href="https://github.com/peterfei/workflow-engine-vue/network/members"><img alt="GitHub Forks" src="https://img.shields.io/github/forks/peterfei/workflow-engine-vue?style=for-the-badge&logo=github"/></a>
@@ -17,9 +14,11 @@ Production‑ready, modern workflow UX built with Vue 3 + Pinia + Tailwind. Desi
   <img alt="Vite" src="https://img.shields.io/badge/Vite-4.x-646cff?style=for-the-badge&logo=vite&logoColor=white"/>
   <img alt="Pinia" src="https://img.shields.io/badge/Pinia-3.x-facc15?style=for-the-badge"/>
 </p>
+</div>
+
 ![Dashboard](Thumbs/dashboard.png)
 
-</div>
+
 
 ## Why this project
 
