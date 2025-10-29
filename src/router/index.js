@@ -6,6 +6,7 @@ import ProcessInstanceDetail from '@/views/ProcessInstanceDetail.vue'
 import Designer from '@/views/Designer.vue'
 import FormList from '@/views/FormList.vue'
 import FormDesigner from '@/views/FormDesigner.vue'
+import MyWork from '@/views/MyWork.vue'
 import Reports from '@/views/Reports.vue'
 import Users from '@/views/Users.vue'
 import Settings from '@/views/Settings.vue'
@@ -37,6 +38,7 @@ const routes = [
     path: '/process-instance-detail/:id',
     name: 'ProcessInstanceDetail',
     component: ProcessInstanceDetail,
+    props: true,
     meta: { title: '流程实例详情 - 流程引擎平台' }
   },
   {
@@ -70,6 +72,12 @@ const routes = [
     component: FormDesigner,
     props: true,
     meta: { title: '编辑表单 - 流程引擎平台' }
+  },
+  {
+    path: '/my-work',
+    name: 'MyWork',
+    component: MyWork,
+    meta: { title: '我的待办与流程 - 流程引擎平台' }
   },
   {
     path: '/reports',

@@ -1,6 +1,6 @@
 gcursor
 .playwright-mcp
-./openspec
+openspec/*
 AGENTS.md
 IMPLEMENTATION_SUMMARY.md
 node_modules

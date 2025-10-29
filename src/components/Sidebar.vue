@@ -29,6 +29,10 @@
         <i class="fas fa-clipboard-list"></i>
         表单管理
       </router-link>
+      <router-link to="/my-work" class="sidebar-nav-item" active-class="active">
+        <i class="fas fa-inbox"></i>
+        我的待办
+      </router-link>
       <router-link to="/reports" class="sidebar-nav-item" active-class="active">
         <i class="fas fa-chart-bar"></i>
         报告分析

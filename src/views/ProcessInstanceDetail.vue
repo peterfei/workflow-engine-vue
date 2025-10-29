@@ -29,6 +29,37 @@
 
     <!-- 主要内容 -->
     <main class="p-6">
+      <!-- Demo 审批流（我的审核 -> 总经理审核 -> 结束） -->
+      <div v-if="isDemo" class="card p-4 mb-6 border border-blue-100 bg-blue-50/40">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="text-sm text-gray-500">演示实例</div>
+            <div class="text-lg font-semibold">{{ demoState.title }} · 当前节点：<span class="text-blue-600">{{ demoState.activeNode }}</span></div>
+            <div class="text-xs text-gray-500">状态：{{ demoState.status }}</div>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-secondary btn-sm" @click="onResetDemo">重置演示</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button v-if="canApproveAsCurrent" class="btn btn-primary" @click="onApproveCurrent">
+            <i class="fas fa-check mr-1"></i> 我同意
+          </button>
+          <button v-if="canApproveAsGM" class="btn btn-primary" @click="onApproveGM">
+            <i class="fas fa-check mr-1"></i> 总经理同意
+          </button>
+          <button v-if="demoState.status==='running'" class="btn btn-danger" @click="onRejectCurrent">
+            <i class="fas fa-times mr-1"></i> 拒绝（当前节点）
+          </button>
+        </div>
+        <div class="mt-3 text-xs text-gray-500">
+          历史：
+          <span v-if="demoState.history.length===0">暂无</span>
+          <ul v-else class="list-disc pl-5 space-y-1">
+            <li v-for="(h,idx) in demoState.history" :key="idx">{{ h.at?.slice(0,16).replace('T',' ') }} · {{ h.node }} · {{ h.action }} · {{ h.userId }}</li>
+          </ul>
+        </div>
+      </div>
       <!-- 实例状态卡片 -->
       <div class="instance-status-grid">
       <InstanceStatusCard
@@ -121,6 +152,7 @@
 
 <script>
 import { InstanceStatusCard, Timeline } from '@/components/common'
+import { getDemoState, resetDemoState, approve as demoApprove, reject as demoReject } from '@/data/mockDemoInstance'
 
 export default {
   name: 'ProcessInstanceDetail',
@@ -138,6 +170,8 @@ export default {
     return {
       instanceTitle: '订单 #10245',
       instanceSubtitle: '订单处理流程 · 实例详情',
+      isDemo: false,
+      demoState: { title: '', status: '', activeNode: '', history: [], assigneeId: null },
       tasks: [
         {
           id: 1,
@@ -198,17 +232,86 @@ export default {
     }
   },
   computed: {
+    demoTimeline() {
+      if (!this.isDemo) return []
+      const steps = [
+        { key: 'start', title: '发起', desc: '流程发起', who: '系统', done: true, time: '' },
+        { key: 'my', title: '我的审核', desc: '当前用户审核', who: '张三', done: false, time: '' },
+        { key: 'gm', title: '总经理审核', desc: '总经理最终审核', who: '总经理', done: false, time: '' },
+        { key: 'end', title: '结束', desc: '流程结束', who: '系统', done: false, time: '' }
+      ]
+      // mark from history (robust to malformed storage)
+      const hist = Array.isArray(this.demoState.history) ? this.demoState.history : []
+      for (const h of hist) {
+        if (h.node === '我的审核' && h.action === 'approve') steps[1].done = true
+        if (h.node === '总经理审核' && h.action === 'approve') steps[2].done = true
+        if (h.action === 'reject') {
+          steps[3].title = '已终止'
+          steps[3].desc = '被拒绝，流程终止'
+          steps[3].done = true
+        }
+      }
+      if (this.demoState.status === 'completed') steps[3].done = true
+      // current pointer
+      const currentKey = this.demoState.activeNode === '我的审核' ? 1 : this.demoState.activeNode === '总经理审核' ? 2 : 3
+      return steps.map((s, idx) => ({
+        id: String(idx + 1),
+        title: s.title,
+        description: `${s.desc}\n\n执行者: ${s.who}${this.getStepNoteSuffix(s.title)}`,
+        time: this.describeStepTime(s.title, idx === currentKey) || '—',
+        status: s.done ? 'completed' : (idx === currentKey ? 'current' : 'pending')
+      }))
+    },
+    canApproveAsCurrent() {
+      return this.isDemo && this.demoState.status === 'running' && this.demoState.activeNode === '我的审核'
+    },
+    canApproveAsGM() {
+      return this.isDemo && this.demoState.status === 'running' && this.demoState.activeNode === '总经理审核'
+    },
     timelineTasks() {
+      if (this.isDemo) {
+        return this.demoTimeline
+      }
       return this.tasks.map(task => ({
-        id: task.id,
+        id: String(task.id),
         title: task.title,
         description: `${task.description}\n\n执行者: ${task.assignee} | ${task.time}${task.duration ? ` | 用时: ${task.duration}` : ''}`,
-        time: task.time,
-        type: task.status
+        time: task.time || '—',
+        status: task.status
       }))
     }
   },
   methods: {
+    setupDemoByRoute() {
+      const rid = (this.id || (this.$route && this.$route.params && this.$route.params.id)) || ''
+      if (rid === 'demo_p_9001') {
+        this.isDemo = true
+        this.demoState = getDemoState()
+        this.instanceTitle = '演示审批流程'
+        this.instanceSubtitle = '我的审核 → 总经理审核 → 结束'
+      }
+    },
+    describeStepTime(title, isCurrent) {
+      const h = (this.demoState.history || [])
+        .filter(x => (title.includes('我的审核') && x.node === '我的审核') || (title.includes('总经理') && x.node === '总经理审核'))
+        .slice(-1)[0]
+      if (h && h.at) return h.at.slice(0, 16).replace('T',' ')
+      if (this.isDemo && title === '结束' && this.demoState.status === 'completed') {
+        const last = (this.demoState.history || []).slice(-1)[0]
+        return last && last.at ? last.at.slice(0,16).replace('T',' ') : ''
+      }
+      return isCurrent ? '进行中' : ''
+    },
+    getStepNoteSuffix(title) {
+      const hist = Array.isArray(this.demoState.history) ? this.demoState.history : []
+      const h = hist
+        .filter(x => (title.includes('我的审核') && x.node === '我的审核') || (title.includes('总经理') && x.node === '总经理审核'))
+        .slice(-1)[0]
+      if (!h) return ''
+      if (h.action === 'approve' && h.comment) return `\n意见: ${h.comment}`
+      if (h.action === 'reject' && h.reason) return `\n拒绝原因: ${h.reason}`
+      return ''
+    },
     exportInstanceData() {
       alert('正在导出实例数据...')
     },
@@ -255,7 +358,26 @@ export default {
     },
     getAssigneeIcon(type) {
       return type === 'system' ? 'fas fa-robot' : 'fas fa-user'
+    },
+    // Demo handlers
+    onApproveCurrent() {
+      const c = prompt('请输入审批意见（可选）', '同意') || ''
+      this.demoState = demoApprove('u_1001', c)
+    },
+    onApproveGM() {
+      const c = prompt('请输入总经理审批意见（可选）', '同意') || ''
+      this.demoState = demoApprove('u_1999', c)
+    },
+    onRejectCurrent() {
+      const reason = prompt('请输入拒绝原因', '演示拒绝') || '演示拒绝'
+      this.demoState = demoReject(this.demoState.assigneeId || 'u_1001', reason)
+    },
+    onResetDemo() {
+      this.demoState = resetDemoState()
     }
+  },
+  mounted() {
+    this.setupDemoByRoute()
   }
 }
 </script>

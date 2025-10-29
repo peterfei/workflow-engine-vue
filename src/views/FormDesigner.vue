@@ -113,10 +113,10 @@
                   @click="selectField(field)"
                   :class="{ 'selected': selectedField?.id === field.id }">
                   <div class="field-header">
-                    <span class="field-label">
+                    <label class="field-label">
                       {{ field.label }}
                       <span v-if="field.required" class="text-red-500 ml-1">*</span>
-                    </span>
+                    </label>
                     <div class="field-actions">
                       <button 
                         class="field-action-btn"
@@ -131,7 +131,43 @@
                     </div>
                   </div>
                   <div class="field-input">
-                    <component :is="getFieldComponent(field)" :field="field" />
+                    <input 
+                      v-if="field.type === 'text' || field.type === 'number'"
+                      :type="field.type"
+                      class="designer-input"
+                      :placeholder="field.placeholder || `请输入${field.label}`"
+                      readonly
+                    />
+                    <input 
+                      v-else-if="field.type === 'date'"
+                      type="date"
+                      class="designer-input"
+                      readonly
+                    />
+                    <textarea 
+                      v-else-if="field.type === 'textarea'"
+                      class="designer-input"
+                      :placeholder="field.placeholder || `请输入${field.label}`"
+                      rows="3"
+                      readonly
+                    ></textarea>
+                    <select 
+                      v-else-if="field.type === 'select'"
+                      class="designer-input"
+                      disabled
+                    >
+                      <option value="">{{ field.placeholder || '请选择' }}</option>
+                      <option v-for="(option, idx) in field.options" :key="idx" :value="option.value">
+                        {{ option.label }}
+                      </option>
+                    </select>
+                    <input 
+                      v-else
+                      type="text"
+                      class="designer-input"
+                      :placeholder="field.placeholder || `请输入${field.label}`"
+                      readonly
+                    />
                   </div>
                 </div>
 
@@ -154,6 +190,14 @@
             </h3>
             <div v-if="selectedField" class="space-y-4">
               <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">字段类型</label>
+                <input 
+                  type="text" 
+                  class="form-input bg-gray-100"
+                  :value="selectedField.type"
+                  readonly>
+              </div>
+              <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">字段标签</label>
                 <input 
                   type="text" 
@@ -173,6 +217,42 @@
                   class="form-checkbox mr-2"
                   v-model="selectedField.required">
                 <label class="text-sm text-gray-700">必填字段</label>
+              </div>
+
+              <!-- 下拉选项配置（仅select类型显示） -->
+              <div v-if="selectedField.type === 'select'" class="border-t pt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  下拉选项
+                  <span class="text-gray-500 text-xs ml-1">({{ (selectedField.options || []).length }}个)</span>
+                </label>
+                <div class="space-y-2 mb-3">
+                  <div 
+                    v-for="(option, index) in (selectedField.options || [])" 
+                    :key="index"
+                    class="flex gap-2 items-center">
+                    <input 
+                      type="text" 
+                      class="form-input flex-1 text-sm"
+                      v-model="option.label"
+                      placeholder="选项标签">
+                    <input 
+                      type="text" 
+                      class="form-input flex-1 text-sm"
+                      v-model="option.value"
+                      placeholder="选项值">
+                    <button 
+                      @click="removeOption(index)"
+                      class="btn-icon btn-sm text-red-500 hover:bg-red-50">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                </div>
+                <button 
+                  @click="addOption"
+                  class="btn-secondary btn-sm w-full">
+                  <i class="fas fa-plus mr-1"></i>
+                  添加选项
+                </button>
               </div>
             </div>
             <div v-else class="text-center text-gray-500 py-8">
@@ -214,13 +294,49 @@
         <div class="form-preview">
           <h2 class="text-2xl font-bold mb-2">{{ formTitle || '表单标题' }}</h2>
           <p class="text-gray-600 mb-6">{{ formDescription || '表单描述' }}</p>
-          <div class="space-y-4" :class="layoutClass">
+          <div :class="layoutClass">
             <div v-for="(field, index) in formFields" :key="index" class="form-group">
               <label class="block text-sm font-medium mb-2">
                 {{ field.label }}
                 <span v-if="field.required" class="text-red-500">*</span>
               </label>
-              <component :is="getFieldComponent(field)" />
+              <!-- 文本输入框 -->
+              <input 
+                v-if="field.type === 'text'"
+                type="text"
+                :placeholder="field.placeholder || `请输入${field.label}`"
+              />
+              <!-- 数字输入框 -->
+              <input 
+                v-else-if="field.type === 'number'"
+                type="number"
+                :placeholder="field.placeholder || `请输入${field.label}`"
+              />
+              <!-- 日期选择器 -->
+              <input 
+                v-else-if="field.type === 'date'"
+                type="date"
+              />
+              <!-- 多行文本 -->
+              <textarea 
+                v-else-if="field.type === 'textarea'"
+                :placeholder="field.placeholder || `请输入${field.label}`"
+                rows="3"
+              ></textarea>
+              <!-- 下拉选择 -->
+              <select 
+                v-else-if="field.type === 'select'">
+                <option value="">{{ field.placeholder || '请选择' }}</option>
+                <option v-for="(opt, idx) in field.options" :key="idx" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+              <!-- 其他类型 -->
+              <input 
+                v-else
+                type="text"
+                :placeholder="field.placeholder || `请输入${field.label}`"
+              />
             </div>
           </div>
         </div>
@@ -345,6 +461,24 @@ const deleteField = (id) => {
   }
 }
 
+// 添加下拉选项
+const addOption = () => {
+  if (!selectedField.value) return
+  if (!selectedField.value.options) {
+    selectedField.value.options = []
+  }
+  selectedField.value.options.push({
+    label: `选项${selectedField.value.options.length + 1}`,
+    value: `option${selectedField.value.options.length + 1}`
+  })
+}
+
+// 删除下拉选项
+const removeOption = (index) => {
+  if (!selectedField.value || !selectedField.value.options) return
+  selectedField.value.options.splice(index, 1)
+}
+
 const getFieldComponent = (field) => {
   const componentMap = {
     text: 'input',
@@ -380,7 +514,12 @@ const addField = (comp) => {
     label: comp.label,
     type: comp.type,
     required: false,
-    placeholder: `请输入${comp.label}`
+    placeholder: `请输入${comp.label}`,
+    options: comp.type === 'select' ? [
+      { label: '选项1', value: 'option1' },
+      { label: '选项2', value: 'option2' },
+      { label: '选项3', value: 'option3' }
+    ] : []
   }
   formFields.value.push(field)
 }
@@ -699,6 +838,8 @@ onMounted(() => {
 .field-label {
   font-weight: 600;
   color: #374151;
+  font-size: 14px;
+  display: block;
 }
 
 .field-actions {
@@ -725,6 +866,42 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
+/* 设计器输入框样式 */
+.designer-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #6b7280;
+  background-color: #f9fafb;
+  transition: all 0.2s ease;
+  cursor: not-allowed;
+}
+
+.designer-input:focus {
+  outline: none;
+  border-color: #9ca3af;
+}
+
+.designer-input::placeholder {
+  color: #9ca3af;
+}
+
+textarea.designer-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+select.designer-input {
+  cursor: not-allowed;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-size: 20px;
+  padding-right: 36px;
+}
+
 .add-field-btn {
   display: flex;
   align-items: center;
@@ -744,11 +921,289 @@ onMounted(() => {
   background: rgba(59, 130, 246, 0.05);
 }
 
+/* 表单预览容器样式 */
 .form-preview {
-  padding: 20px;
+  background: #f9fafb;
+  padding: 32px;
+  border-radius: 8px;
+  min-height: 400px;
 }
 
+.form-preview h2 {
+  color: #1f2937;
+  font-weight: 700;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.form-preview > p {
+  color: #6b7280;
+  margin-bottom: 32px;
+}
+
+/* 表单字段卡片样式 */
 .form-group {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+}
+
+.double-column .form-group,
+.triple-column .form-group {
+  min-height: 106px;
+}
+
+.form-group:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* 字段标签样式 */
+.form-group label {
+  color: #374151;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.form-group label .text-red-500 {
+  margin-left: 4px;
+  font-size: 16px;
+}
+
+/* 字段输入区域 */
+.form-group > *:not(label) {
+  flex: 1;
+}
+
+/* 预览表单输入框样式 */
+.form-preview input,
+.form-preview textarea,
+.form-preview select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-preview input:not([type="checkbox"]):not([type="radio"]),
+.form-preview select {
+  height: 42px;
+}
+
+/* 确保所有输入框宽度一致 */
+.form-preview input[type="date"],
+.form-preview input[type="text"],
+.form-preview input[type="number"],
+.form-preview textarea,
+.form-preview select {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* 确保form-group内部元素宽度一致 */
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.form-preview input:hover,
+.form-preview textarea:hover,
+.form-preview select:hover {
+  border-color: #9ca3af;
+}
+
+.form-preview input:focus,
+.form-preview textarea:focus,
+.form-preview select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-preview textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.form-preview select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-size: 20px;
+  padding-right: 36px;
+}
+
+/* 必填字段左侧边框标识 */
+.form-group:has(label .text-red-500) {
+  border-left: 3px solid #ef4444;
+}
+
+/* 单列布局 */
+.single-column {
+  display: block;
+}
+
+.single-column .form-group {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 16px;
+}
+
+.single-column .form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* 双列布局 - 网格效果 */
+.double-column {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  position: relative;
+  align-items: start;
+}
+
+.double-column .form-group {
+  margin-bottom: 0;
+}
+
+.double-column::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, #d1d5db 10%, #d1d5db 90%, transparent);
+  pointer-events: none;
+}
+
+/* 三列布局 - 网格效果 */
+.triple-column {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  position: relative;
+  align-items: start;
+}
+
+.triple-column .form-group {
+  margin-bottom: 0;
+}
+
+.triple-column::before,
+.triple-column::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, #d1d5db 10%, #d1d5db 90%, transparent);
+  pointer-events: none;
+}
+
+.triple-column::before {
+  left: 33.333%;
+}
+
+.triple-column::after {
+  left: 66.666%;
+}
+
+/* 混合布局 - 视觉分组 */
+.mixed-layout {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.mixed-layout .form-group {
+  margin-bottom: 0;
+}
+
+.mixed-layout .form-group:nth-child(3n+1) {
+  grid-column: 1 / -1;
+  background: linear-gradient(to right, #f9fafb 0%, white 10%);
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .double-column,
+  .triple-column,
+  .mixed-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .double-column::before,
+  .triple-column::before,
+  .triple-column::after {
+    display: none;
+  }
+
+  .form-group {
+    max-width: 100%;
+    margin-bottom: 0;
+  }
+}
+
+/* 按钮样式 */
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.btn-icon:hover {
+  background: #f3f4f6;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
 }
 </style>
